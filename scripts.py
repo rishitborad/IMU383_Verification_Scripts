@@ -71,14 +71,14 @@ class test_environment:
 
         section1 = test_section("UART Transaction Verification")
         self.tests.append(section1)
-        section1.add_test_case(test_case("Default Baudrate Test", self.scripts.default_baudrate_test))
-        section1.add_test_case(test_case("Comminication Test", self.scripts.communication_test))
-        section1.add_test_case(test_case("Header Test", self.scripts.header_test))
-        section1.add_test_case(test_case("Payload Length Test", self.scripts.payload_length_test))
-        section1.add_test_case(test_case("Payload Test", self.scripts.payload_test))
-        section1.add_test_case(test_case("CRC Test", self.scripts.CRC_test))
-        section1.add_test_case(test_case("Polled Mode Test", self.scripts.polled_mode_test))
-        section1.add_test_case(test_case("Continuous Mode Test", self.scripts.continuouse_mode_test))
+        section1.add_test_case(test_case("Default Baudrate Test",   self.scripts.default_baudrate_test))
+        section1.add_test_case(test_case("Comminication Test",      self.scripts.communication_test))
+        section1.add_test_case(test_case("Header Test",             self.scripts.header_test))
+        section1.add_test_case(test_case("Payload Length Test",     self.scripts.payload_length_test))
+        section1.add_test_case(test_case("Payload Test",            self.scripts.payload_test))
+        section1.add_test_case(test_case("CRC Test",                self.scripts.CRC_test))
+        section1.add_test_case(test_case("Polled Mode Test",        self.scripts.polled_mode_test))
+        section1.add_test_case(test_case("Continuous Mode Test",    self.scripts.continuouse_mode_test))
 
     def run_tests(self):
         for test in self.tests:
