@@ -81,26 +81,45 @@ class UART_Dev:
     def send_message(self, data):
         self.UUT.write(self.create_packet(data))
 
-    def set_field_command(self, message):
+    # Message type = 2 byte packet types
+    # Message = raw data, this methods formats it to IMU383 requirement, adds CRC and header, message length and number of fields.
+    # Enables user to just send field ID and Data
+    # this methods figures out number of fields and payload length
+    # For the message types that dont need field address, send message directly
+    def imu383_command(self, message_type, message):
         packet = []
-        message_type = "SF"
-        msg_len = 1 + len(message)
-        no_of_fields = len(message)/4
         packet.extend(bytearray(message_type))
-        packet.append(msg_len)
-        packet.append(no_of_fields)
-        packet.extend(message)
-        print packet
 
-        # serial write
-        self.UUT.write(self.create_packet(packet))
-        # serial read
-        pt, pll, pl = self.unpacked_response()
-        if(pt == 'SF'):
-            return True
+        if(message_type == "WF" or message_type == "SF" or message_type == "GF" or message_type == "WF"):
+            msg_len = 1 + len(message)
+            no_of_fields = len(message)/4
+            packet.append(msg_len)
+            packet.append(no_of_fields)
+            packet.extend(message)
+            #print packet
         else:
-            return False
+            msg_len = len(message)
+            packet.append(msg_len)
+            packet.extend(message)
+            #print packet
+
+        self.UUT.write(self.create_packet(packet))
+        pt, pll, pl = self.unpacked_response()
+        if(pt == message_type):
+            return pl
+        elif(message_type == "GP"):
+            return pt+pll+pl
+        else:
+            return None
 
     def silence_device(self):
         print("Silent Mode ON")
-        self.set_field_command(quiet_field)
+        self.imu383_command("SF",quiet_field)
+
+    def ping_device(self):
+        test_scripts.uut.send_message(ping)
+        pt,pll,pl = test_scripts.uut.unpacked_response()
+        if(pt == "PK"):
+            return True
+        else:
+            return False
