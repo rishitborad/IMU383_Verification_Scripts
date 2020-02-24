@@ -2,11 +2,9 @@ import serial
 import time
 from CRC16_class import CRC16
 
-ping = [0x50,0x4B,0x00]
-Quiet = [0x53,0x46,0x05,0x01,0x00,0x01,0x00,0x00]
-quiet_field= [0x00,0x01,0x00,0x00]
-#ping = [0x55,0x55,0x50,0x4B,0x00,0x9E,0xf4]
-echo = [0x43,0x48,0x01,0x41]
+ping        = [0x50,0x4B,0x00]
+quiet_field = [0x00,0x01,0x00,0x00]
+echo        = [0x43,0x48,0x01,0x41]
 
 crc16 = CRC16()
 
@@ -22,7 +20,9 @@ class UART_Dev:
         self.crc_bytes = 2
 
 
-    def create_packet(self, data):
+    # appends Header and Calculates CRC on data
+    # data should have packet_type + payload_len + payload
+    def _create_packet(self, data):
         header = [0x55, 0x55]
         packet = []
         packet.extend(bytearray(header))
@@ -35,22 +35,29 @@ class UART_Dev:
 
         data = packet
         #print data
+        # At this point, data is ready to send to the UUT
         return data
 
-    def unpacked_response(self):
+    # returns Packet_type, Payload_length, payload
+    def _unpacked_response(self):
         str_list = self.read_response()
         packet_type = ""
         payload_length = ""
         payload = ""
 
+        # when serial read times out, str_list is empty
         if not str_list:
             return packet_type, payload_length, payload
+        # serial read was succesful
         else:
             packet_type = str_list[0]
             payload_length = str_list[1]
             payload = str_list[2]
             return packet_type, payload_length, payload
 
+    # Reads raw data from the UUT
+    # Returns list of strings [Packet_type, Payload_length, payload]
+    # Returns empty list in case of timeout
     def read_response(self, timeout = 10):
         t0 = time.time()
         str_list = []
@@ -78,8 +85,10 @@ class UART_Dev:
                 print hex
                 return str_list
 
+    # appends Header and Calculates CRC on data
+    # data should have packet_type + payload_len + payload
     def send_message(self, data):
-        self.UUT.write(self.create_packet(data))
+        self.UUT.write(self._create_packet(data))
 
     # Message type = 2 byte packet types
     # Message = raw data, this methods formats it to IMU383 requirement, adds CRC and header, message length and number of fields.
@@ -90,35 +99,43 @@ class UART_Dev:
         packet = []
         packet.extend(bytearray(message_type))
 
-        if(message_type == "WF" or message_type == "SF" or message_type == "GF" or message_type == "WF"):
+        if(message_type == "WF" or message_type == "SF"):
             msg_len = 1 + len(message)
             no_of_fields = len(message)/4
             packet.append(msg_len)
             packet.append(no_of_fields)
             packet.extend(message)
             #print packet
+        elif(message_type == "GF" or message_type == "RF"):
+            msg_len = 1 + len(message)
+            no_of_fields = len(message)/2
+            packet.append(msg_len)
+            packet.append(no_of_fields)
+            packet.extend(message)
         else:
             msg_len = len(message)
             packet.append(msg_len)
             packet.extend(message)
             #print packet
 
-        self.UUT.write(self.create_packet(packet))
-        pt, pll, pl = self.unpacked_response()
-        if(pt == message_type):
-            return pl
+        self.UUT.write(self._create_packet(packet))
+        response = self.read_response()
+        if(response[0] == message_type):
+            return response[2]          # just payload
         elif(message_type == "GP"):
-            return pt+pll+pl
+            return response             # packet_type + payload_len + payload
         else:
             return None
 
+    # set packet rate = Quiet
     def silence_device(self):
         print("Silent Mode ON")
         self.imu383_command("SF",quiet_field)
 
+    # returns true if ping was successful
     def ping_device(self):
-        test_scripts.uut.send_message(ping)
-        pt,pll,pl = test_scripts.uut.unpacked_response()
+        self.send_message(ping)
+        pt,pll,pl = self._unpacked_response()
         if(pt == "PK"):
             return True
         else:

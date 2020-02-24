@@ -3,9 +3,13 @@ from IMU383_Uart import UART_Dev
 from IMU383_test_cases import test_section
 from IMU383_test_cases import test_case
 
-ping = [0x50,0x4B,0x00]
+ping = [0x50, 0x4B, 0x00]
 echo = [0x41]
-
+ID = [0x49, 0x44]
+VR = [0x56, 0x52]
+T0 = [0x54, 0x30]
+S0 = [0x53, 0x30]
+S1 = [0x53, 0x31]
 # Add test scripts here
 class test_scripts:
     uut = None
@@ -35,22 +39,22 @@ class test_scripts:
     def CRC_test(self):
         return self.echo_test
     def polled_mode_test(self):
-        pl = test_scripts.uut.imu383_command("GP", [0x53,0x30])
-        if(pl[:2] == "S0"):
+        response = test_scripts.uut.imu383_command("GP", [0x53,0x30])
+        if(response[0] == 'S0'):
             return True
         else:
             return False
     def continuouse_mode_test(self):
         data = test_scripts.uut.imu383_command("SF",[0x00,0x03,0x53,0x30])
-        print data
+        #print data
         data = test_scripts.uut.imu383_command("SF", [0x00,0x01,0x00,0x32])
-        print data
+        #print data
         t0 = time.time()
         count = 0
         while(time.time() - t0 < 10.00):
             count = count+1
-            pt,pll,pl = test_scripts.uut.unpacked_response()
-            print count
+            response = test_scripts.uut.read_response()
+            #print count
             #time.sleep(2)
         # verify that UUT reads data 20 times in 10 seconds,
         # more ofthen than not it reads 21 times due to time it takes to read
@@ -58,6 +62,98 @@ class test_scripts:
             return True
         else:
             return False
+
+    def id_test(self):
+        response = test_scripts.uut.imu383_command("GP", ID)
+        '''
+        payload_len = data[1]
+        payload = data[2]
+        serial_number = payload[:4]
+        model_string = payload[4:]
+        #remaining = payload[]
+        print packet_type
+        print payload_len
+        print payload
+        print bytearray.fromhex(serial_number)
+        print bytearray.fromhex(model_string)
+        '''
+        if(response[0] == 'ID'):
+            return True
+        else:
+            return False
+
+    def version_data_test(self):
+        response = test_scripts.uut.imu383_command("GP", VR)
+        if(response[0] == 'VR'):
+            return True
+        else:
+            return False
+    def Test0_test(self):
+        response = test_scripts.uut.imu383_command("GP", T0)
+        if(response[0] == 'T0'):
+            return True
+        else:
+            return False
+    def scaled_sensor0_test(self):
+        response = test_scripts.uut.imu383_command("GP", S0)
+        if(response[0] == 'S0'):
+            return True
+        else:
+            return False
+    def scaled_sensor1_test(self):
+        response = test_scripts.uut.imu383_command("GP", S1)
+        if(response[0] == 'S1'):
+            return True
+        else:
+            return False
+
+    def get_field_test(self):
+        response = test_scripts.uut.imu383_command("GF", [0x00, 0x01])
+        if not response:
+            return False
+        else:
+            return True
+    def read_field_test(self):
+        response = test_scripts.uut.imu383_command("RF", [0x00, 0x01])
+        if not response:
+            return False
+        else:
+            return True
+
+    def set_field_test(self):
+        response = test_scripts.uut.imu383_command("SF", [0x00, 0x01, 0x00, 0x00])
+        if not response:
+            return False
+        else:
+            return True
+    def write_field_test(self):
+        response = test_scripts.uut.imu383_command("WF", [0x00, 0x01, 0x00, 0x00])
+        if not response:
+            return False
+        else:
+            return True
+
+    def verify_packet_types(self):
+        ping_test = test_scripts.uut.ping_device()
+        echo_test = self.echo_test()
+        get_packet_test = self.polled_mode_test()
+        id = self.id_test()
+        vr = self.version_data_test()
+        t0 = self.Test0_test()
+        s0 = self.scaled_sensor0_test()
+        s1 = self.scaled_sensor1_test()
+        rf = self.read_field_test()
+        wf = self.write_field_test()
+        gf = self.get_field_test()
+        sf = self.set_field_test()
+
+        return ping_test and echo_test and get_packet_test and id and vr    \
+                and t0 and s0 and s1 and gf and rf and wf and sf
+
+    def orientation_field_default_test(self):
+        print "Orientation default test"
+        return False
+
 #################################################
 
 class test_environment:
@@ -78,7 +174,12 @@ class test_environment:
         section1.add_test_case(test_case("Payload Test",            self.scripts.payload_test))
         section1.add_test_case(test_case("CRC Test",                self.scripts.CRC_test))
         section1.add_test_case(test_case("Polled Mode Test",        self.scripts.polled_mode_test))
-        section1.add_test_case(test_case("Continuous Mode Test",    self.scripts.continuouse_mode_test))
+        #section1.add_test_case(test_case("Continuous Mode Test",    self.scripts.continuouse_mode_test))
+        section1.add_test_case(test_case("Verify Packet Types",     self.scripts.verify_packet_types))
+
+        section2 = test_section("Default Checks")
+        self.tests.append(section2)
+        section2.add_test_case(test_case("Orientation Field Default", ))
 
     def run_tests(self):
         for test in self.tests:
