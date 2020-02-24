@@ -24,10 +24,27 @@ class test_section:
 
 class test_case:
 
-    def __init__(self, case_name, handle = None):
+    def __init__(self, case_name, handle = None, cmd = None, param = None):
         self.test_case_name = case_name
         self.handle = handle
         self.result = False
+        self.cmd = cmd
+        self.param = param
+
+    def run(self):
+        raise NotImplementedError("Subclass must implement abstract method")
+        #print "\t\t" + self.test_case_name + "\r\n"
+        #if(self.handle != None):
+        #    self.result = self.handle(self.cmd, self.param)
+
+class default_checks(test_case):
+    
+    def run(self):
+        print "\t\t" + self.test_case_name + "\r\n"
+        if(self.handle != None):
+            self.result = self.handle(self.cmd, self.param)
+
+class code(test_case):
 
     def run(self):
         print "\t\t" + self.test_case_name + "\r\n"

@@ -2,6 +2,8 @@ import time
 from IMU383_Uart import UART_Dev
 from IMU383_test_cases import test_section
 from IMU383_test_cases import test_case
+from IMU383_test_cases import code
+from IMU383_test_cases import default_checks
 
 ping = [0x50, 0x4B, 0x00]
 echo = [0x41]
@@ -150,9 +152,13 @@ class test_scripts:
         return ping_test and echo_test and get_packet_test and id and vr    \
                 and t0 and s0 and s1 and gf and rf and wf and sf
 
-    def orientation_field_default_test(self):
-        print "Orientation default test"
-        return False
+    def default_test(self, cmd, param):
+        response = test_scripts.uut.imu383_command("RF", cmd)
+        print response
+        if(int(response[6:],16) == param):
+            return True
+        else:
+            return False
 
 #################################################
 
@@ -167,19 +173,32 @@ class test_environment:
 
         section1 = test_section("UART Transaction Verification")
         self.tests.append(section1)
-        section1.add_test_case(test_case("Default Baudrate Test",   self.scripts.default_baudrate_test))
-        section1.add_test_case(test_case("Comminication Test",      self.scripts.communication_test))
-        section1.add_test_case(test_case("Header Test",             self.scripts.header_test))
-        section1.add_test_case(test_case("Payload Length Test",     self.scripts.payload_length_test))
-        section1.add_test_case(test_case("Payload Test",            self.scripts.payload_test))
-        section1.add_test_case(test_case("CRC Test",                self.scripts.CRC_test))
-        section1.add_test_case(test_case("Polled Mode Test",        self.scripts.polled_mode_test))
-        #section1.add_test_case(test_case("Continuous Mode Test",    self.scripts.continuouse_mode_test))
-        section1.add_test_case(test_case("Verify Packet Types",     self.scripts.verify_packet_types))
+        section1.add_test_case(code("Default Baudrate Test",   self.scripts.default_baudrate_test))
+        section1.add_test_case(code("Comminication Test",      self.scripts.communication_test))
+        section1.add_test_case(code("Header Test",             self.scripts.header_test))
+        section1.add_test_case(code("Payload Length Test",     self.scripts.payload_length_test))
+        section1.add_test_case(code("Payload Test",            self.scripts.payload_test))
+        section1.add_test_case(code("CRC Test",                self.scripts.CRC_test))
+        section1.add_test_case(code("Polled Mode Test",        self.scripts.polled_mode_test))
+        #section1.add_test_case(code("Continuous Mode Test",    self.scripts.continuouse_mode_test))
+        section1.add_test_case(code("Verify Packet Types",     self.scripts.verify_packet_types))
 
         section2 = test_section("Default Checks")
         self.tests.append(section2)
-        section2.add_test_case(test_case("Orientation Field Default", ))
+        section2.add_test_case(default_checks("Packet Rate Divider Default",                 self.scripts.default_test, [0x00,0x01], 0x0000))
+        section2.add_test_case(default_checks("Unit Baudrate Default",                       self.scripts.default_test, [0x00,0x02], 0x0005))
+        section2.add_test_case(default_checks("Continuous Packet Type Default",              self.scripts.default_test, [0x00,0x03], 0x5330))
+        section2.add_test_case(default_checks("Gyro Filter Setting Default",                 self.scripts.default_test, [0x00,0x05], 0x0000))
+        section2.add_test_case(default_checks("Accelerometer Filter Setting Default",        self.scripts.default_test, [0x00,0x06], 0x0000))
+        section2.add_test_case(default_checks("Orientation Default",                         self.scripts.default_test, [0x00,0x07], 0x006B))
+        section2.add_test_case(default_checks("Sensor Enable Setting Default",               self.scripts.default_test, [0x00,0x42], 0x0005))
+        section2.add_test_case(default_checks("Output Select Setting Default",               self.scripts.default_test, [0x00,0x43], 0x0000))
+        section2.add_test_case(default_checks("Fault Detection - Chip1 Default",             self.scripts.default_test, [0x00,0x4C], 0xFFFF))
+        section2.add_test_case(default_checks("Fault Detection - Chip2 Default",             self.scripts.default_test, [0x00,0x4D], 0xFFFF))
+        section2.add_test_case(default_checks("Fault Detection - Chip3 Default",             self.scripts.default_test, [0x00,0x4E], 0xFFFF))
+        section2.add_test_case(default_checks("Accel Consistency Check Enable Default",      self.scripts.default_test, [0x00,0x61], 0x0001))
+        section2.add_test_case(default_checks("Rate-Sensor Consistency Check Enable Default",self.scripts.default_test, [0x00,0x62], 0x0001))
+
 
     def run_tests(self):
         for test in self.tests:
