@@ -37,8 +37,8 @@ class test_case:
         #if(self.handle != None):
         #    self.result = self.handle(self.cmd, self.param)
 
-class default_checks(test_case):
-    
+class condition_check(test_case):
+
     def run(self):
         print "\t\t" + self.test_case_name + "\r\n"
         if(self.handle != None):
