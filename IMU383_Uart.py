@@ -65,13 +65,14 @@ class UART_Dev:
     # Returns list of strings [Packet_type, Payload_length, payload]
     # Returns empty list in case of timeout
     def read_response(self, timeout = 10):
+        retry = 0
         t0 = time.time()
         str_list = []
         while True:
             hex = self.UUT.read(1).encode("hex")
             if(len(hex) == 0):
                 if(time.time() - t0 > timeout):
-                    # print "timed out"
+                    print "timed out"
                     return str_list
 
             elif(hex == '55'):
@@ -87,9 +88,12 @@ class UART_Dev:
                     str_list.append(self.UUT.read(self.crc_bytes).encode("hex"))
                     #print "CRC = " + crc_hex
                     return str_list
-            else:
-                print hex
-                return str_list
+            else:    # gets here if it received a byte that is not header(0x55)
+                retry += 1
+                t0 = time.time()
+                if(retry > 100):
+                    print "Error: Couldnt find header"
+                    return str_list
 
     # appends Header and Calculates CRC on data
     # data should have packet_type + payload_len + payload
@@ -132,7 +136,10 @@ class UART_Dev:
                 return response[2]          # just payload
             elif("GP" == message_type):
                 return response             # packet_type + payload_len + payload
+            else:
+                return response
         else:
+            print "Error: No response Received in imu383_commnd"
             return None
 
     # set packet rate = Quiet
