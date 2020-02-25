@@ -30,6 +30,12 @@ class UART_Dev:
 
         crc = crc16.crcb(data)
         crc_hex = hex(crc)[2:]
+
+        # CRC has to be 4 char long + odd length strings dont go through bytearray.fromhex()
+        if(len(crc_hex) < 4):
+            for i in range(4-len(crc_hex)):
+                crc_hex = "0"+crc_hex
+
         crc_bytes = bytearray.fromhex(crc_hex)
         packet.extend(crc_bytes)
 
@@ -65,7 +71,7 @@ class UART_Dev:
             hex = self.UUT.read(1).encode("hex")
             if(len(hex) == 0):
                 if(time.time() - t0 > timeout):
-                    print "timed out"
+                    # print "timed out"
                     return str_list
 
             elif(hex == '55'):
@@ -120,16 +126,18 @@ class UART_Dev:
 
         self.UUT.write(self._create_packet(packet))
         response = self.read_response()
-        if(response[0] == message_type):
-            return response[2]          # just payload
-        elif(message_type == "GP"):
-            return response             # packet_type + payload_len + payload
+
+        if response:
+            if(response[0] == message_type):
+                return response[2]          # just payload
+            elif("GP" == message_type):
+                return response             # packet_type + payload_len + payload
         else:
             return None
 
     # set packet rate = Quiet
     def silence_device(self):
-        print("Silent Mode ON")
+        #print("Silent Mode ON")
         self.imu383_command("SF",quiet_field)
 
     # returns true if ping was successful
