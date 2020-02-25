@@ -168,33 +168,50 @@ class test_scripts:
         else:
             return False
 
-    def packet_rate_div(self, cmd, param):
+    # rate_val is packet_rate_value in list, eg:[0x00, 0x05]
+    # rateHz is rate at which packets are expected
+    def packet_rate_div(self, rate_val, rateHz):
         # Set S0 as continuous packet type
-        data = test_scripts.uut.imu383_command("SF",[0x00,0x03,0x53,0x30])
-        test_length = 20
+        #data = test_scripts.uut.imu383_command("SF",[0x00,0x03,0x53,0x30])
+        test_time = 20
+        field_rate = [0x00, 0x01]      # Packet Rate Div Field Address
+        field_rate.extend(rate_val)    # Packet Rate Div Field Address + Field Value
+        data = test_scripts.uut.imu383_command("SF", field_rate)
 
-        ''' Quiet Verification'''
-        data = test_scripts.uut.imu383_command("SF", cmd)
         if not data:
+            print "ERORR: Dint receive data"
             return False
         #print data
+
         t0 = time.time()
         count = 0
-        while(time.time() - t0 < test_length):
+        while(time.time() - t0 < test_time):
             response = test_scripts.uut.read_response()
-            # Count up when packet recceived
-            if response:
+            # Count up when S0 packet recceived
+            if response and response[0] == "S0":
+                #print response
                 count = count+1
         test_scripts.uut.silence_device()
         #print count
-        if(param == 0):
+        #time.sleep(1)
+        if(rateHz == 0):
             return True if(count == 0) else False
-        elif((param * test_length - 1) or (count < param * test_length + 1)):
+        elif(((rateHz * test_time - 1) < count) or (count < (rateHz * test_time + 1))):
             return True
         else:
             return False
 
+    # packet type should be packet_type value in list format
+    def continuous_packet_type(self, packet_type, param):
 
+        field = [0x00,0x03]
+        field.extend(packet_type)
+        print field
+        data = test_scripts.uut.imu383_command("SF", field)
+        print data
+
+
+        return False
 #################################################
 
 class test_environment:
@@ -252,15 +269,20 @@ class test_environment:
         '''
         section4 = test_section("Packet Rate Divider Functional Test")
         self.tests.append(section4)
-        section4.add_test_case(condition_check("Packet Rate Div 100Hz",  self.scripts.packet_rate_div, [0x00,0x01,0x00,0x01], 100))
-        section4.add_test_case(condition_check("Packet Rate Div 50Hz",   self.scripts.packet_rate_div, [0x00,0x01,0x00,0x02], 50))
-        section4.add_test_case(condition_check("Packet Rate Div 25Hz",   self.scripts.packet_rate_div, [0x00,0x01,0x00,0x04], 25))
-        section4.add_test_case(condition_check("Packet Rate Div 20Hz",   self.scripts.packet_rate_div, [0x00,0x01,0x00,0x05], 20))
-        section4.add_test_case(condition_check("Packet Rate Div 10Hz",   self.scripts.packet_rate_div, [0x00,0x01,0x00,0x0A], 10))
-        section4.add_test_case(condition_check("Packet Rate Div 5Hz",    self.scripts.packet_rate_div, [0x00,0x01,0x00,0x14], 5))
-        section4.add_test_case(condition_check("Packet Rate Div 4Hz",    self.scripts.packet_rate_div, [0x00,0x01,0x00,0x19], 4))
-        section4.add_test_case(condition_check("Packet Rate Div 2Hz",    self.scripts.packet_rate_div, [0x00,0x01,0x00,0x32], 2))
-        section4.add_test_case(condition_check("Packet Rate Div Quiet",  self.scripts.packet_rate_div, [0x00,0x01,0x00,0x00], 0))
+        section4.add_test_case(condition_check("Packet Rate Div 100Hz",  self.scripts.packet_rate_div, [0x00,0x01], 100))
+        section4.add_test_case(condition_check("Packet Rate Div 50Hz",   self.scripts.packet_rate_div, [0x00,0x02], 50))
+        #section4.add_test_case(condition_check("Packet Rate Div 25Hz",   self.scripts.packet_rate_div, [0x00,0x04], 25))
+        #section4.add_test_case(condition_check("Packet Rate Div 20Hz",   self.scripts.packet_rate_div, [0x00,0x05], 20))
+        #section4.add_test_case(condition_check("Packet Rate Div 10Hz",   self.scripts.packet_rate_div, [0x00,0x0A], 10))
+        #section4.add_test_case(condition_check("Packet Rate Div 5Hz",    self.scripts.packet_rate_div, [0x00,0x14], 5))
+        #section4.add_test_case(condition_check("Packet Rate Div 4Hz",    self.scripts.packet_rate_div, [0x00,0x19], 4))
+        #section4.add_test_case(condition_check("Packet Rate Div 2Hz",    self.scripts.packet_rate_div, [0x00,0x32], 2))
+        #section4.add_test_case(condition_check("Packet Rate Div Quiet",  self.scripts.packet_rate_div, [0x00,0x00], 0))
+
+        section5 = test_section("Continuous Packet Type Functional Test")
+        self.tests.append(section5)
+        #section5.add_test_case(condition_check("Continuous Packet Type Functional Test",  self.scripts.packet_rate_div, [0x00,0x01], 100))
+        section5.add_test_case(condition_check("Continuous Packet Type Functional Test",  self.scripts.continuous_packet_type, [0x53,0x30], 100))
 
     def run_tests(self):
         for test in self.tests:
