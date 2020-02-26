@@ -5,6 +5,7 @@ from IMU383_test_cases import test_section
 from IMU383_test_cases import test_case
 from IMU383_test_cases import code
 from IMU383_test_cases import condition_check
+from math import pi
 
 
 
@@ -13,9 +14,14 @@ from IMU383_test_cases import condition_check
 ping = [0x50, 0x4B, 0x00]
 echo = [0x41]
 
+upper_limit_accel = 32767 * ((20.0)/65536)
+lower_limit_accel = -32766 * ((20.0)/65536)
+upper_limit_rate = 32767 * (1260.0/65536)
+lower_limit_rate = -32766 * (1260.0/65536)
+
 PK = [0x50, 0x4B]
 CH = [0x43, 0x48]
-Gp = [0x47, 0x50]
+GP = [0x47, 0x50]
 NAK= [0x15, 0x15]
 ID = [0x49, 0x44]
 VR = [0x56, 0x52]
@@ -26,7 +32,6 @@ WF = [0x57, 0x47]
 SF = [0x53, 0x46]
 RF = [0x52, 0x46]
 GF = [0x47, 0x46]
-
 
 packet_rate_div_f               = [0x00,0x01]
 unit_baud_f                     = [0x00,0x02]
@@ -237,49 +242,101 @@ class test_scripts:
         else:
             return False
 
-    def combine_reg(self,lsb,msb):
+    def combine_reg_short(self,lsb,msb):
             lsb = struct.pack('B',lsb)
             msb = struct.pack('B',msb)
             return struct.unpack('h',msb+lsb)[0]
 
+    def combine_reg_ushort(self,lsb,msb):
+            lsb = struct.pack('B',lsb)
+            msb = struct.pack('B',msb)
+            return struct.unpack('H',msb+lsb)[0]
 
-    # packet type should be packet_type value in list format
-    def continuous_packet_type(self, packet_type, param):
+    def continuous_packet_type_S0(self):
         '''Setup'''
-        field = continuous_packet_type_f
+        passed = True
 
-        data = test_scripts.uut.imu383_command("SF", field + packet_type)
-        data = test_scripts.uut.imu383_command("SF", [0x00,0x01,0x00,0x32])
+        data = test_scripts.uut.imu383_command("SF", continuous_packet_type_f + S0)
+        data = test_scripts.uut.imu383_command("SF", packet_rate_div_f + [0x00,0x01])
+
+        # conver list of hex value to string
+        pt = ''.join(hex(val)[2:] for val in S0)
+        # use pt.decode("hex") to conver pt ro ASCII
 
         '''Execute'''
-        for each in range(5):
+        for each in range(10):
             response = test_scripts.uut.read_response()
-            if response and response[0] == "S0":
+            if response and response[0] == pt.decode("hex"):
                 len = int(response[1],16)
                 msg = bytearray.fromhex(response[2])
-                print response[2]
-                x_accel = self.combine_reg(msg[0],msg[1])/4
-                y_accel = self.combine_reg(msg[2],msg[3])/4
-                z_accel = self.combine_reg(msg[4],msg[5])/4
-                x_rate = self.combine_reg(msg[6],msg[7])/200
-                y_rate = self.combine_reg(msg[8],msg[9])/200
-                z_rate = self.combine_reg(msg[10],msg[11])/200
-                x_temp = self.combine_reg(msg[18],msg[19])
-                y_temp = self.combine_reg(msg[20],msg[21])
-                z_temp = self.combine_reg(msg[22],msg[23])
-                board_temp = self.combine_reg(msg[24],msg[25])
-                timer = self.combine_reg(msg[26],msg[27])
-                BIT = self.combine_reg(msg[28],msg[29])
-                print x_accel, y_accel, z_accel
-                print x_rate, y_rate, z_rate
-                print x_temp, y_temp, z_temp
-                print board_temp
-                print timer
-                print BIT
-                #print self.twos_complement(x_accel,16)
 
-        '''Result'''
-        return False
+                x_accel = self.combine_reg_short(msg[0],msg[1]) * (20.0/65536)
+                y_accel = self.combine_reg_short(msg[2],msg[3]) * (20.0/65536)
+                z_accel = self.combine_reg_short(msg[4],msg[5]) * (20.0/65536)
+                x_rate = self.combine_reg_short(msg[6],msg[7]) * (1260.0/65536)
+                y_rate = self.combine_reg_short(msg[8],msg[9]) * (1260.0/65536)
+                z_rate = self.combine_reg_short(msg[10],msg[11]) * (1260.0/65536)
+                x_temp = self.combine_reg_short(msg[18],msg[19]) * (200.0/65536)
+                y_temp = self.combine_reg_short(msg[20],msg[21]) * (200.0/65536)
+                z_temp = self.combine_reg_short(msg[22],msg[23]) * (200.0/65536)
+                board_temp = self.combine_reg_short(msg[24],msg[25]) * (200.0/65536)
+                timer = self.combine_reg_ushort(msg[26],msg[27]) * 15.259022
+                BIT = self.combine_reg_ushort(msg[28],msg[29])
+                '''Result'''
+                #print board_temp
+                if( not (lower_limit_accel < x_accel and x_accel < upper_limit_accel) and\
+                    (lower_limit_accel < y_accel and y_accel < upper_limit_accel) and\
+                    (lower_limit_accel < z_accel and z_accel < upper_limit_accel) and\
+                    (lower_limit_accel < x_accel and x_accel < upper_limit_accel) and\
+                    (lower_limit_accel < y_accel and y_accel < upper_limit_accel) and\
+                    (lower_limit_accel < z_accel and z_accel < upper_limit_accel)    \
+                   ) :
+                   return False
+
+        return True
+
+    def continuous_packet_type_S1(self):
+        '''Setup'''
+        passed = True
+
+        data = test_scripts.uut.imu383_command("SF", continuous_packet_type_f + S1)
+        data = test_scripts.uut.imu383_command("SF", packet_rate_div_f + [0x00,0x01])
+
+        # conver list of hex value to string
+        pt = ''.join(hex(val)[2:] for val in S1)
+        # use pt.decode("hex") to conver pt ro ASCII
+
+        '''Execute'''
+        for each in range(10):
+            response = test_scripts.uut.read_response()
+            if response and response[0] == pt.decode("hex"):
+                len = int(response[1],16)
+                msg = bytearray.fromhex(response[2])
+
+                x_accel = self.combine_reg_short(msg[0],msg[1]) * (20.0/65536)
+                y_accel = self.combine_reg_short(msg[2],msg[3]) * (20.0/65536)
+                z_accel = self.combine_reg_short(msg[4],msg[5]) * (20.0/65536)
+                x_rate = self.combine_reg_short(msg[6],msg[7]) * (1260.0/65536)
+                y_rate = self.combine_reg_short(msg[8],msg[9]) * (1260.0/65536)
+                z_rate = self.combine_reg_short(msg[10],msg[11]) * (1260.0/65536)
+                x_temp = self.combine_reg_short(msg[12],msg[13]) * (200.0/65536)
+                y_temp = self.combine_reg_short(msg[14],msg[15]) * (200.0/65536)
+                z_temp = self.combine_reg_short(msg[16],msg[17]) * (200.0/65536)
+                board_temp = self.combine_reg_short(msg[18],msg[19]) * (200.0/65536)
+                timer = self.combine_reg_ushort(msg[20],msg[21]) * 15.259022
+                BIT = self.combine_reg_ushort(msg[22],msg[23])
+                '''Result'''
+                #print board_temp
+                if( not (lower_limit_accel < x_accel and x_accel < upper_limit_accel) and\
+                    (lower_limit_accel < y_accel and y_accel < upper_limit_accel) and\
+                    (lower_limit_accel < z_accel and z_accel < upper_limit_accel) and\
+                    (lower_limit_accel < x_accel and x_accel < upper_limit_accel) and\
+                    (lower_limit_accel < y_accel and y_accel < upper_limit_accel) and\
+                    (lower_limit_accel < z_accel and z_accel < upper_limit_accel)    \
+                   ) :
+                   return False
+
+        return True
 
     def orientation(self, config, void):
         '''Setup'''
@@ -300,7 +357,7 @@ class test_environment:
 
     # Add test scetions & test scripts here
     def setup_tests(self):
-        '''
+
         section1 = test_section("UART Transaction Verification")
         self.tests.append(section1)
         section1.add_test_case(code("Default Baudrate Test",   self.scripts.default_baudrate_test))
@@ -345,7 +402,6 @@ class test_environment:
         section3.add_test_case(condition_check("Accel Consistency Check Enable Default",      self.scripts.gf_default_test, accel_consistency_en_f,         0x0001))
         section3.add_test_case(condition_check("Rate-Sensor Consistency Check Enable Default",self.scripts.gf_default_test, rate_sensor_consistency_en_f,   0x0001))
 
-
         section4 = test_section("Packet Rate Divider Functional Test")
         self.tests.append(section4)
         section4.add_test_case(condition_check("Packet Rate Div 100Hz",  self.scripts.packet_rate_div, [0x00,0x01], 100))
@@ -357,12 +413,15 @@ class test_environment:
         section4.add_test_case(condition_check("Packet Rate Div 4Hz",    self.scripts.packet_rate_div, [0x00,0x19], 4))
         section4.add_test_case(condition_check("Packet Rate Div 2Hz",    self.scripts.packet_rate_div, [0x00,0x32], 2))
         section4.add_test_case(condition_check("Packet Rate Div Quiet",  self.scripts.packet_rate_div, [0x00,0x00], 0))
-        '''
+
         section5 = test_section("Continuous Packet Type Functional Test")
         self.tests.append(section5)
-        section5.add_test_case(condition_check("Continuous Packet Type Functional Test",  self.scripts.continuous_packet_type, S0, 100))
-        #section5.add_test_case(condition_check("Continuous Packet Type Functional Test",  self.scripts.continuous_packet_type, S1, 100))
-        #section5.add_test_case(condition_check("Continuous Packet Type Functional Test",  self.scripts.orientation, [0x00, 0x00]))
+        section5.add_test_case(code("Continuous Packet Type S0 Functional Test",  self.scripts.continuous_packet_type_S0))
+        section5.add_test_case(code("Continuous Packet Type S1 Functional Test",  self.scripts.continuous_packet_type_S1))
+
+        section6 = test_section("Orientation Functional Test")
+        self.tests.append(section6)
+        section6.add_test_case(condition_check("Orientation Functional Test",  self.scripts.orientation, [0x00, 0x00]))
 
     def run_tests(self):
         for test in self.tests:
