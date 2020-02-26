@@ -25,8 +25,9 @@ class UART_Dev:
     def _create_packet(self, data):
         header = [0x55, 0x55]
         packet = []
-        packet.extend(bytearray(header))
-        packet.extend(data)
+
+        packet = packet + header
+        packet = packet + data
 
         crc = crc16.crcb(data)
         crc_hex = hex(crc)[2:]
@@ -114,21 +115,21 @@ class UART_Dev:
             no_of_fields = len(message)/4
             packet.append(msg_len)
             packet.append(no_of_fields)
-            packet.extend(message)
+            final_packet = packet + message
             #print packet
         elif(message_type == "GF" or message_type == "RF"):
             msg_len = 1 + len(message)
             no_of_fields = len(message)/2
             packet.append(msg_len)
             packet.append(no_of_fields)
-            packet.extend(message)
+            final_packet = packet + message
         else:
             msg_len = len(message)
             packet.append(msg_len)
-            packet.extend(message)
+            final_packet = packet + message
             #print packet
 
-        self.UUT.write(self._create_packet(packet))
+        self.UUT.write(self._create_packet(final_packet))
         response = self.read_response()
 
         if response:

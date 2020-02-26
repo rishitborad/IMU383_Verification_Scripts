@@ -6,6 +6,10 @@ from IMU383_test_cases import test_case
 from IMU383_test_cases import code
 from IMU383_test_cases import condition_check
 
+
+
+# TODO: Update all the Field and Packey Type address to pre-defined variables for portability
+
 ping = [0x50, 0x4B, 0x00]
 echo = [0x41]
 
@@ -197,19 +201,23 @@ class test_scripts:
 
     # rate_val is packet_rate_value in list, eg:[0x00, 0x05]
     # rateHz is rate at which packets are expected
-    def packet_rate_div(self, rate_val, rateHz):
-        # Set S0 as continuous packet type
-        #data = test_scripts.uut.imu383_command("SF",[0x00,0x03,0x53,0x30])
-        test_time = 20
-        field_rate = [0x00, 0x01]      # Packet Rate Div Field Address
-        field_rate.extend(rate_val)    # Packet Rate Div Field Address + Field Value
-        data = test_scripts.uut.imu383_command("SF", field_rate)
+    def packet_rate_div(self, rate, rateHz):
 
-        if not data:
+        '''Setup'''
+        # Set S0 as continuous packet type
+        data = test_scripts.uut.imu383_command("SF",[0x00,0x03,0x53,0x30])
+
+        test_time = 20
+        field = packet_rate_div_f      # Packet Rate Div Field Address
+
+        resp = test_scripts.uut.imu383_command("SF", field + rate)
+
+        if not resp:
             print "ERORR: Dint receive data"
             return False
         #print data
 
+        '''Execute'''
         t0 = time.time()
         count = 0
         while(time.time() - t0 < test_time):
@@ -218,9 +226,10 @@ class test_scripts:
             if response and response[0] == "S0":
                 #print response
                 count = count+1
+
         test_scripts.uut.silence_device()
-        #print count
-        #time.sleep(1)
+
+        '''Result'''
         if(rateHz == 0):
             return True if(count == 0) else False
         elif(((rateHz * test_time - 1) < count) or (count < (rateHz * test_time + 1))):
@@ -236,14 +245,14 @@ class test_scripts:
 
     # packet type should be packet_type value in list format
     def continuous_packet_type(self, packet_type, param):
+        '''Setup'''
+        field = continuous_packet_type_f
 
-        field = [0x00,0x03]
-        field.extend(packet_type)
-        print field
-        data = test_scripts.uut.imu383_command("SF", field)
+        data = test_scripts.uut.imu383_command("SF", field + packet_type)
         data = test_scripts.uut.imu383_command("SF", [0x00,0x01,0x00,0x32])
 
-        for each in range(10):
+        '''Execute'''
+        for each in range(5):
             response = test_scripts.uut.read_response()
             if response and response[0] == "S0":
                 len = int(response[1],16)
@@ -268,8 +277,19 @@ class test_scripts:
                 print timer
                 print BIT
                 #print self.twos_complement(x_accel,16)
+
+        '''Result'''
         return False
 
+    def orientation(self, config, void):
+        '''Setup'''
+        field = orientation_f
+        field.extend(config)
+        print field
+        '''Execute'''
+
+        '''Result'''
+        return False
 #################################################
 
 class test_environment:
@@ -295,35 +315,36 @@ class test_environment:
 
         section2 = test_section("Read Field Default Checks")
         self.tests.append(section2)
-        section2.add_test_case(condition_check("Packet Rate Divider Default",                 self.scripts.rf_default_test, [0x00,0x01], 0x0000))
-        section2.add_test_case(condition_check("Unit Baudrate Default",                       self.scripts.rf_default_test, [0x00,0x02], 0x0005))
-        section2.add_test_case(condition_check("Continuous Packet Type Default",              self.scripts.rf_default_test, [0x00,0x03], 0x5330))
-        section2.add_test_case(condition_check("Gyro Filter Setting Default",                 self.scripts.rf_default_test, [0x00,0x05], 0x0000))
-        section2.add_test_case(condition_check("Accelerometer Filter Setting Default",        self.scripts.rf_default_test, [0x00,0x06], 0x0000))
-        section2.add_test_case(condition_check("Orientation Default",                         self.scripts.rf_default_test, [0x00,0x07], 0x006B))
-        section2.add_test_case(condition_check("Sensor Enable Setting Default",               self.scripts.rf_default_test, [0x00,0x42], 0x0005))
-        section2.add_test_case(condition_check("Output Select Setting Default",               self.scripts.rf_default_test, [0x00,0x43], 0x0000))
-        section2.add_test_case(condition_check("Fault Detection - Chip1 Default",             self.scripts.rf_default_test, [0x00,0x4C], 0xFFFF))
-        section2.add_test_case(condition_check("Fault Detection - Chip2 Default",             self.scripts.rf_default_test, [0x00,0x4D], 0xFFFF))
-        section2.add_test_case(condition_check("Fault Detection - Chip3 Default",             self.scripts.rf_default_test, [0x00,0x4E], 0xFFFF))
-        section2.add_test_case(condition_check("Accel Consistency Check Enable Default",      self.scripts.rf_default_test, [0x00,0x61], 0x0001))
-        section2.add_test_case(condition_check("Rate-Sensor Consistency Check Enable Default",self.scripts.rf_default_test, [0x00,0x62], 0x0001))
+        section2.add_test_case(condition_check("Packet Rate Divider Default",                 self.scripts.rf_default_test, packet_rate_div_f,              0x0000))
+        section2.add_test_case(condition_check("Unit Baudrate Default",                       self.scripts.rf_default_test, unit_baud_f,                    0x0005))
+        section2.add_test_case(condition_check("Continuous Packet Type Default",              self.scripts.rf_default_test, continuous_packet_type_f,       0x5330))
+        section2.add_test_case(condition_check("Gyro Filter Setting Default",                 self.scripts.rf_default_test, gyro_filter_setting_f,          0x0000))
+        section2.add_test_case(condition_check("Accelerometer Filter Setting Default",        self.scripts.rf_default_test, accel_filter_setting_f,         0x0000))
+        section2.add_test_case(condition_check("Orientation Default",                         self.scripts.rf_default_test, orientation_f,                  0x006B))
+        section2.add_test_case(condition_check("Sensor Enable Setting Default",               self.scripts.rf_default_test, sensor_enable_f,                0x0005))
+        section2.add_test_case(condition_check("Output Select Setting Default",               self.scripts.rf_default_test, output_selecf_f,                0x0000))
+        section2.add_test_case(condition_check("Fault Detection - Chip1 Default",             self.scripts.rf_default_test, fault_detct_chip1_f,            0xFFFF))
+        section2.add_test_case(condition_check("Fault Detection - Chip2 Default",             self.scripts.rf_default_test, fault_detct_chip2_f,            0xFFFF))
+        section2.add_test_case(condition_check("Fault Detection - Chip3 Default",             self.scripts.rf_default_test, fault_detct_chip3_f,            0xFFFF))
+        section2.add_test_case(condition_check("Accel Consistency Check Enable Default",      self.scripts.rf_default_test, accel_consistency_en_f,         0x0001))
+        section2.add_test_case(condition_check("Rate-Sensor Consistency Check Enable Default",self.scripts.rf_default_test, rate_sensor_consistency_en_f,   0x0001))
 
         section3 = test_section("Get Field Default Checks")
         self.tests.append(section3)
-        section3.add_test_case(condition_check("Packet Rate Divider Default",                 self.scripts.gf_default_test, [0x00,0x01], 0x0000))
-        section3.add_test_case(condition_check("Unit Baudrate Default",                       self.scripts.gf_default_test, [0x00,0x02], 0x0005))
-        section3.add_test_case(condition_check("Continuous Packet Type Default",              self.scripts.gf_default_test, [0x00,0x03], 0x5330))
-        section3.add_test_case(condition_check("Gyro Filter Setting Default",                 self.scripts.gf_default_test, [0x00,0x05], 0x0000))
-        section3.add_test_case(condition_check("Accelerometer Filter Setting Default",        self.scripts.gf_default_test, [0x00,0x06], 0x0000))
-        section3.add_test_case(condition_check("Orientation Default",                         self.scripts.gf_default_test, [0x00,0x07], 0x006B))
-        section3.add_test_case(condition_check("Sensor Enable Setting Default",               self.scripts.gf_default_test, [0x00,0x42], 0x0005))
-        section3.add_test_case(condition_check("Output Select Setting Default",               self.scripts.gf_default_test, [0x00,0x43], 0x0000))
-        section3.add_test_case(condition_check("Fault Detection - Chip1 Default",             self.scripts.gf_default_test, [0x00,0x4C], 0xFFFF))
-        section3.add_test_case(condition_check("Fault Detection - Chip2 Default",             self.scripts.gf_default_test, [0x00,0x4D], 0xFFFF))
-        section3.add_test_case(condition_check("Fault Detection - Chip3 Default",             self.scripts.gf_default_test, [0x00,0x4E], 0xFFFF))
-        section3.add_test_case(condition_check("Accel Consistency Check Enable Default",      self.scripts.gf_default_test, [0x00,0x61], 0x0001))
-        section3.add_test_case(condition_check("Rate-Sensor Consistency Check Enable Default",self.scripts.gf_default_test, [0x00,0x62], 0x0001))
+        section3.add_test_case(condition_check("Packet Rate Divider Default",                 self.scripts.gf_default_test, packet_rate_div_f,              0x0000))
+        section3.add_test_case(condition_check("Unit Baudrate Default",                       self.scripts.gf_default_test, unit_baud_f,                    0x0005))
+        section3.add_test_case(condition_check("Continuous Packet Type Default",              self.scripts.gf_default_test, continuous_packet_type_f,       0x5330))
+        section3.add_test_case(condition_check("Gyro Filter Setting Default",                 self.scripts.gf_default_test, gyro_filter_setting_f,          0x0000))
+        section3.add_test_case(condition_check("Accelerometer Filter Setting Default",        self.scripts.gf_default_test, accel_filter_setting_f,         0x0000))
+        section3.add_test_case(condition_check("Orientation Default",                         self.scripts.gf_default_test, orientation_f,                  0x006B))
+        section3.add_test_case(condition_check("Sensor Enable Setting Default",               self.scripts.gf_default_test, sensor_enable_f,                0x0005))
+        section3.add_test_case(condition_check("Output Select Setting Default",               self.scripts.gf_default_test, output_selecf_f,                0x0000))
+        section3.add_test_case(condition_check("Fault Detection - Chip1 Default",             self.scripts.gf_default_test, fault_detct_chip1_f,            0xFFFF))
+        section3.add_test_case(condition_check("Fault Detection - Chip2 Default",             self.scripts.gf_default_test, fault_detct_chip2_f,            0xFFFF))
+        section3.add_test_case(condition_check("Fault Detection - Chip3 Default",             self.scripts.gf_default_test, fault_detct_chip3_f,            0xFFFF))
+        section3.add_test_case(condition_check("Accel Consistency Check Enable Default",      self.scripts.gf_default_test, accel_consistency_en_f,         0x0001))
+        section3.add_test_case(condition_check("Rate-Sensor Consistency Check Enable Default",self.scripts.gf_default_test, rate_sensor_consistency_en_f,   0x0001))
+
 
         section4 = test_section("Packet Rate Divider Functional Test")
         self.tests.append(section4)
@@ -339,7 +360,9 @@ class test_environment:
         '''
         section5 = test_section("Continuous Packet Type Functional Test")
         self.tests.append(section5)
-        section5.add_test_case(condition_check("Continuous Packet Type Functional Test",  self.scripts.continuous_packet_type, [0x53,0x30], 100))
+        section5.add_test_case(condition_check("Continuous Packet Type Functional Test",  self.scripts.continuous_packet_type, S0, 100))
+        #section5.add_test_case(condition_check("Continuous Packet Type Functional Test",  self.scripts.continuous_packet_type, S1, 100))
+        #section5.add_test_case(condition_check("Continuous Packet Type Functional Test",  self.scripts.orientation, [0x00, 0x00]))
 
     def run_tests(self):
         for test in self.tests:
