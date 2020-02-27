@@ -127,7 +127,7 @@ class UART_Dev:
             msg_len = len(message)
             packet.append(msg_len)
             final_packet = packet + message
-            #print packet
+            #print final_packet
 
         self.UUT.write(self._create_packet(final_packet))
         response = self.read_response()

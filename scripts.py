@@ -340,13 +340,21 @@ class test_scripts:
 
     def orientation(self, config, void):
         '''Setup'''
-        field = orientation_f
-        field.extend(config)
-        print field
+        data = test_scripts.uut.imu383_command("SF", orientation_f + config)
+        #print data
+        test_scripts.uut.silence_device()
+
+        orientation_config = ''.join(hex(val)[2:] for val in config)
+        #print int(orientation_config,16)
         '''Execute'''
+        data = test_scripts.uut.imu383_command("GF", orientation_f)
 
         '''Result'''
-        return False
+        if(int(data[6:], 16) == int(orientation_config, 16)):
+            return True
+        else:
+            return False
+
 #################################################
 
 class test_environment:
@@ -357,7 +365,7 @@ class test_environment:
 
     # Add test scetions & test scripts here
     def setup_tests(self):
-
+        '''
         section1 = test_section("UART Transaction Verification")
         self.tests.append(section1)
         section1.add_test_case(code("Default Baudrate Test",   self.scripts.default_baudrate_test))
@@ -418,10 +426,34 @@ class test_environment:
         self.tests.append(section5)
         section5.add_test_case(code("Continuous Packet Type S0 Functional Test",  self.scripts.continuous_packet_type_S0))
         section5.add_test_case(code("Continuous Packet Type S1 Functional Test",  self.scripts.continuous_packet_type_S1))
-
+        '''
         section6 = test_section("Orientation Functional Test")
         self.tests.append(section6)
-        section6.add_test_case(condition_check("Orientation Functional Test",  self.scripts.orientation, [0x00, 0x00]))
+        section6.add_test_case(condition_check("Orientation Functional Test 0x0000",  self.scripts.orientation, [0x00, 0x00]))
+        section6.add_test_case(condition_check("Orientation Functional Test 0x0009",  self.scripts.orientation, [0x00, 0x09]))
+        section6.add_test_case(condition_check("Orientation Functional Test 0x0023",  self.scripts.orientation, [0x00, 0x23]))
+        section6.add_test_case(condition_check("Orientation Functional Test 0x002A",  self.scripts.orientation, [0x00, 0x2A]))
+        section6.add_test_case(condition_check("Orientation Functional Test 0x0041",  self.scripts.orientation, [0x00, 0x41]))
+        section6.add_test_case(condition_check("Orientation Functional Test 0x0048",  self.scripts.orientation, [0x00, 0x48]))
+        section6.add_test_case(condition_check("Orientation Functional Test 0x0062",  self.scripts.orientation, [0x00, 0x62]))
+        section6.add_test_case(condition_check("Orientation Functional Test 0x006B",  self.scripts.orientation, [0x00, 0x6B]))
+        section6.add_test_case(condition_check("Orientation Functional Test 0x0085",  self.scripts.orientation, [0x00, 0x85]))
+        section6.add_test_case(condition_check("Orientation Functional Test 0x008C",  self.scripts.orientation, [0x00, 0x8C]))
+        section6.add_test_case(condition_check("Orientation Functional Test 0x0092",  self.scripts.orientation, [0x00, 0x92]))
+        section6.add_test_case(condition_check("Orientation Functional Test 0x009B",  self.scripts.orientation, [0x00, 0x9B]))
+        section6.add_test_case(condition_check("Orientation Functional Test 0x00C4",  self.scripts.orientation, [0x00, 0xC4]))
+        section6.add_test_case(condition_check("Orientation Functional Test 0x00CD",  self.scripts.orientation, [0x00, 0xCD]))
+        section6.add_test_case(condition_check("Orientation Functional Test 0x00D3",  self.scripts.orientation, [0x00, 0xD3]))
+        section6.add_test_case(condition_check("Orientation Functional Test 0x00DA",  self.scripts.orientation, [0x00, 0xDA]))
+        section6.add_test_case(condition_check("Orientation Functional Test 0x0111",  self.scripts.orientation, [0x01, 0x11]))
+        section6.add_test_case(condition_check("Orientation Functional Test 0x0118",  self.scripts.orientation, [0x01, 0x18]))
+        section6.add_test_case(condition_check("Orientation Functional Test 0x0124",  self.scripts.orientation, [0x01, 0x24]))
+        section6.add_test_case(condition_check("Orientation Functional Test 0x012D",  self.scripts.orientation, [0x01, 0x2D]))
+        section6.add_test_case(condition_check("Orientation Functional Test 0x0150",  self.scripts.orientation, [0x01, 0x50]))
+        section6.add_test_case(condition_check("Orientation Functional Test 0x0159",  self.scripts.orientation, [0x01, 0x59]))
+        section6.add_test_case(condition_check("Orientation Functional Test 0x0165",  self.scripts.orientation, [0x01, 0x65]))
+        section6.add_test_case(condition_check("Orientation Functional Test 0x016C",  self.scripts.orientation, [0x01, 0x6C]))
+
 
     def run_tests(self):
         for test in self.tests:
