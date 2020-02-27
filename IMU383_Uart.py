@@ -156,3 +156,8 @@ class UART_Dev:
             return True
         else:
             return False
+
+    def restart_device(self):
+        self.send_message([0x53,0x52,0x00])
+        response = self.read_response()
+        #print response
