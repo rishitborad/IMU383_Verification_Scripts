@@ -355,6 +355,77 @@ class test_scripts:
         else:
             return False
 
+    def check_bad_commands(self, field, val):
+
+        '''Setup'''
+        test_scripts.uut.silence_device()
+        nak = ''.join(hex(val)[2:] for val in NAK)
+
+        '''Execute'''
+        data = test_scripts.uut.imu383_command("SF", field + val)
+        if( data[0].encode("hex") == nak):
+            return True
+        else:
+            print data
+            data = test_scripts.uut.imu383_command("GF", field)
+            print data
+            return False
+
+
+    def read_only_test(self, field, val):
+        '''Setup'''
+        data = test_scripts.uut.imu383_command("SF", field + val)
+        print data
+        data = test_scripts.uut.imu383_command("GF", field)
+        print data
+
+        '''Execute'''
+
+        '''Result'''
+
+        return False
+
+    def fault_detection_field_test(self, field, val):
+        '''Setup'''
+        data = test_scripts.uut.imu383_command("SF", field + val)
+        print data
+        data = test_scripts.uut.imu383_command("GF", field)
+        print data
+
+        '''Execute'''
+
+        '''Result'''
+
+        return False
+
+    def write_field_test(self, field, val):
+        '''Setup'''
+        data = test_scripts.uut.imu383_command("RF", field)
+        orig_field_val = []
+        orig_field_val= orig_field_val + field
+        # store original field value before changing
+        orig_field_val.append(int(data[-4:-2],16))
+        orig_field_val.append(int(data[-2:],16))     #read last two characters
+
+        '''Execute'''
+        data = test_scripts.uut.imu383_command("WF", field + val)
+        print data
+        test_scripts.uut.restart_device()
+        test_scripts.uut.silence_device()
+        data = test_scripts.uut.imu383_command("RF", field)
+
+        '''Reset to Original'''
+        test_scripts.uut.imu383_command("WF", orig_field_val)
+        test_scripts.uut.restart_device()
+        test_scripts.uut.silence_device()
+        test_scripts.uut.imu383_command("RF", field)
+
+        '''Result'''
+        if(int(data[-4:],16) == int(''.join(hex(i)[2:] for i in val),16)):
+            return True
+        else:
+            return False
+            
 #################################################
 
 class test_environment:
@@ -426,7 +497,7 @@ class test_environment:
         self.tests.append(section5)
         section5.add_test_case(code("Continuous Packet Type S0 Functional Test",  self.scripts.continuous_packet_type_S0))
         section5.add_test_case(code("Continuous Packet Type S1 Functional Test",  self.scripts.continuous_packet_type_S1))
-        '''
+
         section6 = test_section("Orientation Functional Test")
         self.tests.append(section6)
         section6.add_test_case(condition_check("Orientation Functional Test 0x0000",  self.scripts.orientation, [0x00, 0x00]))
@@ -453,6 +524,42 @@ class test_environment:
         section6.add_test_case(condition_check("Orientation Functional Test 0x0159",  self.scripts.orientation, [0x01, 0x59]))
         section6.add_test_case(condition_check("Orientation Functional Test 0x0165",  self.scripts.orientation, [0x01, 0x65]))
         section6.add_test_case(condition_check("Orientation Functional Test 0x016C",  self.scripts.orientation, [0x01, 0x6C]))
+        #checking few random bad orientation values
+        section6.add_test_case(condition_check("Orientation Functional Test Bad Command1",  self.scripts.check_bad_commands, orientation_f ,[0x11, 0x11]))
+        section6.add_test_case(condition_check("Orientation Functional Test Bad Command2",  self.scripts.check_bad_commands, orientation_f ,[0x22, 0x22]))
+        section6.add_test_case(condition_check("Orientation Functional Test Bad Command3",  self.scripts.check_bad_commands, orientation_f ,[0x33, 0x33]))
+        section6.add_test_case(condition_check("Orientation Functional Test Bad Command4",  self.scripts.check_bad_commands, orientation_f ,[0x44, 0x44]))
+        section6.add_test_case(condition_check("Orientation Functional Test Bad Command5",  self.scripts.check_bad_commands, orientation_f ,[0x55, 0x55]))
+        section6.add_test_case(condition_check("Orientation Functional Test Bad Command6",  self.scripts.check_bad_commands, orientation_f ,[0x66, 0x66]))
+        section6.add_test_case(condition_check("Orientation Functional Test Bad Command7",  self.scripts.check_bad_commands, orientation_f ,[0x99, 0x99]))
+        section6.add_test_case(condition_check("Orientation Functional Test Bad Command8",  self.scripts.check_bad_commands, orientation_f ,[0xAA, 0xAA]))
+        section6.add_test_case(condition_check("Orientation Functional Test Bad Command9",  self.scripts.check_bad_commands, orientation_f ,[0xBB, 0xBB]))
+        section6.add_test_case(condition_check("Orientation Functional Test Bad Command10",  self.scripts.check_bad_commands, orientation_f ,[0xCC, 0xCC]))
+        section6.add_test_case(condition_check("Orientation Functional Test Bad Command11",  self.scripts.check_bad_commands, orientation_f ,[0xDD, 0xDD]))
+        section6.add_test_case(condition_check("Orientation Functional Test Bad Command12",  self.scripts.check_bad_commands, orientation_f ,[0xEE, 0xEE]))
+
+        section7 = test_section("Read-only Test")
+        self.tests.append(section7)
+        section7.add_test_case(condition_check("Fault Detection Fault Cause - Chip1 read-only Test ",  self.scripts.read_only_test, fault_detct_chip1_f, [0x00, 0x02]))
+        section7.add_test_case(condition_check("Fault Detection Fault Cause - Chip2 read-only Test ",  self.scripts.read_only_test, fault_detct_chip2_f, [0x00, 0x02]))
+        section7.add_test_case(condition_check("Fault Detection Fault Cause - Chip3 read-only Test ",  self.scripts.read_only_test, fault_detct_chip3_f, [0x00, 0x02]))
+
+        section8 = test_section("Fault Detection Field Test")
+        self.tests.append(section8)
+        section8.add_test_case(condition_check("Fault Detection Field Test ",  self.scripts.fault_detection_field_test, accel_consistency_en_f, [0x00, 0x02]))
+        section8.add_test_case(condition_check("Fault Detection Field Test ",  self.scripts.fault_detection_field_test, rate_sensor_consistency_en_f, [0x00, 0x03]))
+
+        section9 = test_section("Bad Field Values")
+        self.tests.append(section9)
+        section9.add_test_case(condition_check("Bad Field Value - Packet Rate",  self.scripts.check_bad_commands, packet_rate_div_f, [0x00, 0x03]))
+        section9.add_test_case(condition_check("Bad Field Value - Baudrate",  self.scripts.check_bad_commands, unit_baud_f, [0x00, 0x00]))
+        section9.add_test_case(condition_check("Bad Field Value - Baudrate",  self.scripts.check_bad_commands, continuous_packet_type_f, [0x00, 0x00]))
+        #section9.add_test_case(condition_check("Bad Field Value - Baudrate",  self.scripts.check_bad_commands, unit_baud_f, [0x00, 0x00]))
+
+        '''
+        section10 = test_section("Write Field Tests")
+        self.tests.append(section10)
+        section10.add_test_case(condition_check("Write Field Rata Retention Tests",  self.scripts.write_field_test, packet_rate_div_f, [0x00, 0x32]))
 
 
     def run_tests(self):
