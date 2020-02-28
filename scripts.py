@@ -40,7 +40,7 @@ gyro_filter_setting_f           = [0x00,0x05]
 accel_filter_setting_f          = [0x00,0x06]
 orientation_f                   = [0x00,0x07]
 sensor_enable_f                 = [0x00,0x42]
-output_selecf_f                 = [0x00,0x43]
+output_select_f                 = [0x00,0x43]
 fault_detct_chip1_f             = [0x00,0x4C]
 fault_detct_chip2_f             = [0x00,0x4D]
 fault_detct_chip3_f             = [0x00,0x4E]
@@ -398,7 +398,33 @@ class test_scripts:
 
         return False
 
-    def write_field_test(self, field, val):
+    def _get_packet_rate(self, packet_type):
+        # Convert from Hex list to ASCII
+        type = ''.join(hex(val)[2:] for val in packet_type)
+
+        test_time = 10
+        t0 = time.time()
+        count = 0
+
+        while(time.time() - t0 < test_time):
+            response = test_scripts.uut.read_response()
+            print response
+            # Count up when S0 packet recceived
+            if response and response[0] == type.decode("hex"):
+                print response
+                count = count+1
+        print "Count",count
+        if(count != 0):
+            return count/test_time
+        else:
+            return count
+
+    def write_field_retention_test_rate_f(self):
+        field = packet_rate_div_f
+        val = [0x00, 0x01]      #packet rate div value
+        rate_hz = 100
+        actual_rate_hz = 0
+
         '''Setup'''
         data = test_scripts.uut.imu383_command("RF", field)
         orig_field_val = []
@@ -407,12 +433,27 @@ class test_scripts:
         orig_field_val.append(int(data[-4:-2],16))
         orig_field_val.append(int(data[-2:],16))     #read last two characters
 
-        '''Execute'''
-        data = test_scripts.uut.imu383_command("WF", field + val)
-        print data
-        test_scripts.uut.restart_device()
+        data = test_scripts.uut.imu383_command("SF", continuous_packet_type_f + S1)
         test_scripts.uut.silence_device()
-        data = test_scripts.uut.imu383_command("RF", field)
+        uut_packet_rate = self._get_packet_rate(S1)
+        print uut_packet_rate
+
+        '''Execute'''
+        # Write to packet rate field
+        data = test_scripts.uut.imu383_command("WF", field + val)
+
+        # packet rate souldn't change
+        uut_packet_rate = self._get_packet_rate(S1)
+        if(uut_packet_rate != 0):
+            return False
+        else:
+            #restart the device if the rate hasn't changed to see
+            test_scripts.uut.restart_device()
+            data = test_scripts.uut.imu383_command("SF", continuous_packet_type_f + S1)
+            #data = test_scripts.uut.imu383_command("RF", field)
+            #print data
+            actual_rate_hz = self._get_packet_rate(S1)
+            print actual_rate_hz
 
         '''Reset to Original'''
         test_scripts.uut.imu383_command("WF", orig_field_val)
@@ -420,12 +461,26 @@ class test_scripts:
         test_scripts.uut.silence_device()
         test_scripts.uut.imu383_command("RF", field)
 
-        '''Result'''
-        if(int(data[-4:],16) == int(''.join(hex(i)[2:] for i in val),16)):
+        if(actual_rate_hz == rate_hz):
             return True
         else:
             return False
-            
+
+
+
+    def write_field_effectiveness_test(self, field, val):
+        '''Setup'''
+        data = test_scripts.uut.imu383_command("RF", field)
+        orig_field_val = []
+        orig_field_val= orig_field_val + field
+        # store original field value before changing
+        orig_field_val.append(int(data[-4:-2],16))
+        orig_field_val.append(int(data[-2:],16))     #read last two characters
+
+        return False
+
+    def get_field_effectiveness_test(self, field, val):
+        return False
 #################################################
 
 class test_environment:
@@ -458,7 +513,7 @@ class test_environment:
         section2.add_test_case(condition_check("Accelerometer Filter Setting Default",        self.scripts.rf_default_test, accel_filter_setting_f,         0x0000))
         section2.add_test_case(condition_check("Orientation Default",                         self.scripts.rf_default_test, orientation_f,                  0x006B))
         section2.add_test_case(condition_check("Sensor Enable Setting Default",               self.scripts.rf_default_test, sensor_enable_f,                0x0005))
-        section2.add_test_case(condition_check("Output Select Setting Default",               self.scripts.rf_default_test, output_selecf_f,                0x0000))
+        section2.add_test_case(condition_check("Output Select Setting Default",               self.scripts.rf_default_test, output_select_f,                0x0000))
         section2.add_test_case(condition_check("Fault Detection - Chip1 Default",             self.scripts.rf_default_test, fault_detct_chip1_f,            0xFFFF))
         section2.add_test_case(condition_check("Fault Detection - Chip2 Default",             self.scripts.rf_default_test, fault_detct_chip2_f,            0xFFFF))
         section2.add_test_case(condition_check("Fault Detection - Chip3 Default",             self.scripts.rf_default_test, fault_detct_chip3_f,            0xFFFF))
@@ -474,7 +529,7 @@ class test_environment:
         section3.add_test_case(condition_check("Accelerometer Filter Setting Default",        self.scripts.gf_default_test, accel_filter_setting_f,         0x0000))
         section3.add_test_case(condition_check("Orientation Default",                         self.scripts.gf_default_test, orientation_f,                  0x006B))
         section3.add_test_case(condition_check("Sensor Enable Setting Default",               self.scripts.gf_default_test, sensor_enable_f,                0x0005))
-        section3.add_test_case(condition_check("Output Select Setting Default",               self.scripts.gf_default_test, output_selecf_f,                0x0000))
+        section3.add_test_case(condition_check("Output Select Setting Default",               self.scripts.gf_default_test, output_select_f,                0x0000))
         section3.add_test_case(condition_check("Fault Detection - Chip1 Default",             self.scripts.gf_default_test, fault_detct_chip1_f,            0xFFFF))
         section3.add_test_case(condition_check("Fault Detection - Chip2 Default",             self.scripts.gf_default_test, fault_detct_chip2_f,            0xFFFF))
         section3.add_test_case(condition_check("Fault Detection - Chip3 Default",             self.scripts.gf_default_test, fault_detct_chip3_f,            0xFFFF))
@@ -500,30 +555,30 @@ class test_environment:
 
         section6 = test_section("Orientation Functional Test")
         self.tests.append(section6)
-        section6.add_test_case(condition_check("Orientation Functional Test 0x0000",  self.scripts.orientation, [0x00, 0x00]))
-        section6.add_test_case(condition_check("Orientation Functional Test 0x0009",  self.scripts.orientation, [0x00, 0x09]))
-        section6.add_test_case(condition_check("Orientation Functional Test 0x0023",  self.scripts.orientation, [0x00, 0x23]))
-        section6.add_test_case(condition_check("Orientation Functional Test 0x002A",  self.scripts.orientation, [0x00, 0x2A]))
-        section6.add_test_case(condition_check("Orientation Functional Test 0x0041",  self.scripts.orientation, [0x00, 0x41]))
-        section6.add_test_case(condition_check("Orientation Functional Test 0x0048",  self.scripts.orientation, [0x00, 0x48]))
-        section6.add_test_case(condition_check("Orientation Functional Test 0x0062",  self.scripts.orientation, [0x00, 0x62]))
-        section6.add_test_case(condition_check("Orientation Functional Test 0x006B",  self.scripts.orientation, [0x00, 0x6B]))
-        section6.add_test_case(condition_check("Orientation Functional Test 0x0085",  self.scripts.orientation, [0x00, 0x85]))
-        section6.add_test_case(condition_check("Orientation Functional Test 0x008C",  self.scripts.orientation, [0x00, 0x8C]))
-        section6.add_test_case(condition_check("Orientation Functional Test 0x0092",  self.scripts.orientation, [0x00, 0x92]))
-        section6.add_test_case(condition_check("Orientation Functional Test 0x009B",  self.scripts.orientation, [0x00, 0x9B]))
-        section6.add_test_case(condition_check("Orientation Functional Test 0x00C4",  self.scripts.orientation, [0x00, 0xC4]))
-        section6.add_test_case(condition_check("Orientation Functional Test 0x00CD",  self.scripts.orientation, [0x00, 0xCD]))
-        section6.add_test_case(condition_check("Orientation Functional Test 0x00D3",  self.scripts.orientation, [0x00, 0xD3]))
-        section6.add_test_case(condition_check("Orientation Functional Test 0x00DA",  self.scripts.orientation, [0x00, 0xDA]))
-        section6.add_test_case(condition_check("Orientation Functional Test 0x0111",  self.scripts.orientation, [0x01, 0x11]))
-        section6.add_test_case(condition_check("Orientation Functional Test 0x0118",  self.scripts.orientation, [0x01, 0x18]))
-        section6.add_test_case(condition_check("Orientation Functional Test 0x0124",  self.scripts.orientation, [0x01, 0x24]))
-        section6.add_test_case(condition_check("Orientation Functional Test 0x012D",  self.scripts.orientation, [0x01, 0x2D]))
-        section6.add_test_case(condition_check("Orientation Functional Test 0x0150",  self.scripts.orientation, [0x01, 0x50]))
-        section6.add_test_case(condition_check("Orientation Functional Test 0x0159",  self.scripts.orientation, [0x01, 0x59]))
-        section6.add_test_case(condition_check("Orientation Functional Test 0x0165",  self.scripts.orientation, [0x01, 0x65]))
-        section6.add_test_case(condition_check("Orientation Functional Test 0x016C",  self.scripts.orientation, [0x01, 0x6C]))
+        section6.add_test_case(condition_check("Orientation Functional Test 0x0000",        self.scripts.orientation, [0x00, 0x00]))
+        section6.add_test_case(condition_check("Orientation Functional Test 0x0009",        self.scripts.orientation, [0x00, 0x09]))
+        section6.add_test_case(condition_check("Orientation Functional Test 0x0023",        self.scripts.orientation, [0x00, 0x23]))
+        section6.add_test_case(condition_check("Orientation Functional Test 0x002A",        self.scripts.orientation, [0x00, 0x2A]))
+        section6.add_test_case(condition_check("Orientation Functional Test 0x0041",        self.scripts.orientation, [0x00, 0x41]))
+        section6.add_test_case(condition_check("Orientation Functional Test 0x0048",        self.scripts.orientation, [0x00, 0x48]))
+        section6.add_test_case(condition_check("Orientation Functional Test 0x0062",        self.scripts.orientation, [0x00, 0x62]))
+        section6.add_test_case(condition_check("Orientation Functional Test 0x006B",        self.scripts.orientation, [0x00, 0x6B]))
+        section6.add_test_case(condition_check("Orientation Functional Test 0x0085",        self.scripts.orientation, [0x00, 0x85]))
+        section6.add_test_case(condition_check("Orientation Functional Test 0x008C",        self.scripts.orientation, [0x00, 0x8C]))
+        section6.add_test_case(condition_check("Orientation Functional Test 0x0092",        self.scripts.orientation, [0x00, 0x92]))
+        section6.add_test_case(condition_check("Orientation Functional Test 0x009B",        self.scripts.orientation, [0x00, 0x9B]))
+        section6.add_test_case(condition_check("Orientation Functional Test 0x00C4",        self.scripts.orientation, [0x00, 0xC4]))
+        section6.add_test_case(condition_check("Orientation Functional Test 0x00CD",        self.scripts.orientation, [0x00, 0xCD]))
+        section6.add_test_case(condition_check("Orientation Functional Test 0x00D3",        self.scripts.orientation, [0x00, 0xD3]))
+        section6.add_test_case(condition_check("Orientation Functional Test 0x00DA",        self.scripts.orientation, [0x00, 0xDA]))
+        section6.add_test_case(condition_check("Orientation Functional Test 0x0111",        self.scripts.orientation, [0x01, 0x11]))
+        section6.add_test_case(condition_check("Orientation Functional Test 0x0118",        self.scripts.orientation, [0x01, 0x18]))
+        section6.add_test_case(condition_check("Orientation Functional Test 0x0124",        self.scripts.orientation, [0x01, 0x24]))
+        section6.add_test_case(condition_check("Orientation Functional Test 0x012D",        self.scripts.orientation, [0x01, 0x2D]))
+        section6.add_test_case(condition_check("Orientation Functional Test 0x0150",        self.scripts.orientation, [0x01, 0x50]))
+        section6.add_test_case(condition_check("Orientation Functional Test 0x0159",        self.scripts.orientation, [0x01, 0x59]))
+        section6.add_test_case(condition_check("Orientation Functional Test 0x0165",        self.scripts.orientation, [0x01, 0x65]))
+        section6.add_test_case(condition_check("Orientation Functional Test 0x016C",        self.scripts.orientation, [0x01, 0x6C]))
         #checking few random bad orientation values
         section6.add_test_case(condition_check("Orientation Functional Test Bad Command1",  self.scripts.check_bad_commands, orientation_f ,[0x11, 0x11]))
         section6.add_test_case(condition_check("Orientation Functional Test Bad Command2",  self.scripts.check_bad_commands, orientation_f ,[0x22, 0x22]))
@@ -534,9 +589,9 @@ class test_environment:
         section6.add_test_case(condition_check("Orientation Functional Test Bad Command7",  self.scripts.check_bad_commands, orientation_f ,[0x99, 0x99]))
         section6.add_test_case(condition_check("Orientation Functional Test Bad Command8",  self.scripts.check_bad_commands, orientation_f ,[0xAA, 0xAA]))
         section6.add_test_case(condition_check("Orientation Functional Test Bad Command9",  self.scripts.check_bad_commands, orientation_f ,[0xBB, 0xBB]))
-        section6.add_test_case(condition_check("Orientation Functional Test Bad Command10",  self.scripts.check_bad_commands, orientation_f ,[0xCC, 0xCC]))
-        section6.add_test_case(condition_check("Orientation Functional Test Bad Command11",  self.scripts.check_bad_commands, orientation_f ,[0xDD, 0xDD]))
-        section6.add_test_case(condition_check("Orientation Functional Test Bad Command12",  self.scripts.check_bad_commands, orientation_f ,[0xEE, 0xEE]))
+        section6.add_test_case(condition_check("Orientation Functional Test Bad Command10", self.scripts.check_bad_commands, orientation_f ,[0xCC, 0xCC]))
+        section6.add_test_case(condition_check("Orientation Functional Test Bad Command11", self.scripts.check_bad_commands, orientation_f ,[0xDD, 0xDD]))
+        section6.add_test_case(condition_check("Orientation Functional Test Bad Command12", self.scripts.check_bad_commands, orientation_f ,[0xEE, 0xEE]))
 
         section7 = test_section("Read-only Test")
         self.tests.append(section7)
@@ -551,16 +606,26 @@ class test_environment:
 
         section9 = test_section("Bad Field Values")
         self.tests.append(section9)
-        section9.add_test_case(condition_check("Bad Field Value - Packet Rate",  self.scripts.check_bad_commands, packet_rate_div_f, [0x00, 0x03]))
-        section9.add_test_case(condition_check("Bad Field Value - Baudrate",  self.scripts.check_bad_commands, unit_baud_f, [0x00, 0x00]))
-        section9.add_test_case(condition_check("Bad Field Value - Baudrate",  self.scripts.check_bad_commands, continuous_packet_type_f, [0x00, 0x00]))
-        #section9.add_test_case(condition_check("Bad Field Value - Baudrate",  self.scripts.check_bad_commands, unit_baud_f, [0x00, 0x00]))
+        section9.add_test_case(condition_check("Bad Field Value - Packet Rate", self.scripts.check_bad_commands, packet_rate_div_f, [0x00, 0x03]))
+        section9.add_test_case(condition_check("Bad Field Value - Baudrate",    self.scripts.check_bad_commands, unit_baud_f, [0x00, 0x00]))
+        section9.add_test_case(condition_check("Bad Field Value - Baudrate",    self.scripts.check_bad_commands, continuous_packet_type_f, [0x00, 0x00]))
+        #section9.add_test_case(condition_check("Bad Field Value - Baudrate",   self.scripts.check_bad_commands, unit_baud_f, [0x00, 0x00]))
 
         '''
         section10 = test_section("Write Field Tests")
         self.tests.append(section10)
-        section10.add_test_case(condition_check("Write Field Rata Retention Tests",  self.scripts.write_field_test, packet_rate_div_f, [0x00, 0x32]))
-
+        '''
+        section10.add_test_case(condition_check("Write Field Data Retention Test - Packet Rate Div",        self.scripts.write_field_retention_test, packet_rate_div_f,             [0x00, 0x32]))
+        section10.add_test_case(condition_check("Write Field Data Retention Test - Continuous Packet Type",self.scripts.write_field_retention_test, continuous_packet_type_f,      [0x53, 0x31]))
+        section10.add_test_case(condition_check("Write Field Data Retention Test - Orientation",           self.scripts.write_field_retention_test, orientation_f,                 [0x00, 0x62]))
+        section10.add_test_case(condition_check("Write Field Data Retention Test - Gyro Filter Settings",  self.scripts.write_field_retention_test, gyro_filter_setting_f,         [0x00, 0x32]))
+        section10.add_test_case(condition_check("Write Field Data Retention Test - Accel Filter Settings", self.scripts.write_field_retention_test, accel_filter_setting_f,        [0x00, 0x32]))
+        section10.add_test_case(condition_check("Write Field Data Retention Test - Sensor Enable",         self.scripts.write_field_retention_test, sensor_enable_f,               [0x00, 0x32]))
+        section10.add_test_case(condition_check("Write Field Data Retention Test - Output Select",         self.scripts.write_field_retention_test, output_select_f,               [0x00, 0x32]))
+        section10.add_test_case(condition_check("Write Field Data Retention Test - Accel Consistency",     self.scripts.write_field_retention_test, accel_consistency_en_f,        [0x00, 0x32]))
+        section10.add_test_case(condition_check("Write Field Data Retention Test - Rate Sens Consistency", self.scripts.write_field_retention_test, rate_sensor_consistency_en_f,  [0x00, 0x32]))
+        '''
+        section10.add_test_case(code("Write Field Data Effectiveness Tests", self.scripts.write_field_retention_test_rate_f, packet_rate_div_f))
 
     def run_tests(self):
         for test in self.tests:
