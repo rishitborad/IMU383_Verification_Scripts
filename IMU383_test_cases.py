@@ -43,6 +43,8 @@ class condition_check(test_case):
         print "\t\t" + self.test_case_name + "\r\n"
         if(self.handle != None):
             self.result = self.handle(self.cmd, self.param)
+            result_str = self.test_case_name + ": " + "\t\t\t\tPassed" if self.result else self.test_case_name + ": " + "\t\t\t\tFailed"
+            print result_str
 
 class code(test_case):
 
@@ -50,3 +52,5 @@ class code(test_case):
         print "\t\t" + self.test_case_name + "\r\n"
         if(self.handle != None):
             self.result = self.handle()
+            result_str = self.test_case_name + ": " + "\t\t\t\tPassed" if self.result else self.test_case_name + ": " + "\t\t\t\tFailed"
+            print result_str
