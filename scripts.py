@@ -266,6 +266,7 @@ class test_scripts:
         '''Execute'''
         for each in range(10):
             response = test_scripts.uut.read_response()
+            #print "S0",response
             if response and response[0] == pt.decode("hex"):
                 len = int(response[1],16)
                 msg = bytearray.fromhex(response[2])
@@ -309,6 +310,7 @@ class test_scripts:
         '''Execute'''
         for each in range(10):
             response = test_scripts.uut.read_response()
+            #print "S1",response
             if response and response[0] == pt.decode("hex"):
                 len = int(response[1],16)
                 msg = bytearray.fromhex(response[2])
@@ -348,7 +350,7 @@ class test_scripts:
         #print int(orientation_config,16)
         '''Execute'''
         data = test_scripts.uut.imu383_command("GF", orientation_f)
-
+        print "orientation", data
         '''Result'''
         if(int(data[6:], 16) == int(orientation_config, 16)):
             return True
@@ -366,18 +368,18 @@ class test_scripts:
         if( data[0].encode("hex") == nak):
             return True
         else:
-            print data
+            #print data
             data = test_scripts.uut.imu383_command("GF", field)
-            print data
+            #print data
             return False
 
 
     def read_only_test(self, field, val):
         '''Setup'''
         data = test_scripts.uut.imu383_command("SF", field + val)
-        print data
+        #print data
         data = test_scripts.uut.imu383_command("GF", field)
-        print data
+        #print data
 
         '''Execute'''
 
@@ -388,9 +390,9 @@ class test_scripts:
     def fault_detection_field_test(self, field, val):
         '''Setup'''
         data = test_scripts.uut.imu383_command("SF", field + val)
-        print data
+        #print data
         data = test_scripts.uut.imu383_command("GF", field)
-        print data
+        #print data
 
         '''Execute'''
 
@@ -405,7 +407,7 @@ class test_scripts:
         # store original field value before changing
         orig_field_val.append(int(data[-4:-2],16))
         orig_field_val.append(int(data[-2:],16))     #read last two characters
-        print orig_field_val
+        #print orig_field_val
 
     def write_field_retention_test(self, field, val):
         '''Setup'''
@@ -416,26 +418,26 @@ class test_scripts:
         # store original field value before changing
         orig_field_val.append(int(data[-4:-2],16))
         orig_field_val.append(int(data[-2:],16))     #read last two characters
-        print "orig_val",orig_field_val
+        #print "orig_val",orig_field_val
         '''Execute'''
         data = test_scripts.uut.imu383_command("WF", field + val)
-        print "writeField",data
+        #print "writeField",data
         test_scripts.uut.restart_device()
-        print "1device restarted"
-        
+        #print "1device restarted"
+
         test_scripts.uut.silence_device()
-        print "1device silenced"
+        #print "1device silenced"
         data = test_scripts.uut.imu383_command("RF", field)
-        print data
+        #print data
         '''Reset to Original'''
         data0 = test_scripts.uut.imu383_command("WF", orig_field_val)
-        print data0
+        #print data0
         test_scripts.uut.restart_device()
-        print "2device restarted"
+        #print "2device restarted"
         test_scripts.uut.silence_device()
-        print "2device silenced"
+        #print "2device silenced"
         data0 = test_scripts.uut.imu383_command("RF", field)
-        print data0
+        #print data0
 
         '''Result'''
 
@@ -454,12 +456,12 @@ class test_scripts:
 
         while(time.time() - t0 < test_time):
             response = test_scripts.uut.read_response()
-            print response
+            #print response
             # Count up when S0 packet recceived
             if response and response[0] == type.decode("hex"):
-                print response
+                #print response
                 count = count+1
-        print "Count",count
+        #print "Count",count
         if(count != 0):
             return count/test_time
         else:
@@ -482,7 +484,7 @@ class test_scripts:
         data = test_scripts.uut.imu383_command("SF", continuous_packet_type_f + S1)
         test_scripts.uut.silence_device()
         uut_packet_rate = self._get_packet_rate(S1)
-        print uut_packet_rate
+        #print uut_packet_rate
 
         '''Execute'''
         # Write to packet rate field
@@ -499,7 +501,7 @@ class test_scripts:
             #data = test_scripts.uut.imu383_command("RF", field)
             #print data
             actual_rate_hz = self._get_packet_rate(S1)
-            print actual_rate_hz
+            #print actual_rate_hz
 
         '''Reset to Original'''
         test_scripts.uut.imu383_command("WF", orig_field_val)
@@ -522,7 +524,7 @@ class test_environment:
 
     # Add test scetions & test scripts here
     def setup_tests(self):
-        '''
+
         section1 = test_section("UART Transaction Verification")
         self.tests.append(section1)
         section1.add_test_case(code("Default Baudrate Test",   self.scripts.default_baudrate_test))
@@ -583,8 +585,8 @@ class test_environment:
         self.tests.append(section5)
         section5.add_test_case(code("Continuous Packet Type S0 Functional Test",  self.scripts.continuous_packet_type_S0))
         section5.add_test_case(code("Continuous Packet Type S1 Functional Test",  self.scripts.continuous_packet_type_S1))
-        '''
-        '''
+
+
         section6 = test_section("Orientation Functional Test")
         self.tests.append(section6)
         section6.add_test_case(condition_check("Orientation Functional Test 0x0000",        self.scripts.orientation, [0x00, 0x00]))
@@ -624,8 +626,8 @@ class test_environment:
         section6.add_test_case(condition_check("Orientation Functional Test Bad Command10", self.scripts.check_bad_commands, orientation_f ,[0xCC, 0xCC]))
         section6.add_test_case(condition_check("Orientation Functional Test Bad Command11", self.scripts.check_bad_commands, orientation_f ,[0xDD, 0xDD]))
         section6.add_test_case(condition_check("Orientation Functional Test Bad Command12", self.scripts.check_bad_commands, orientation_f ,[0xEE, 0xEE]))
-        '''
-        '''
+
+
         section7 = test_section("Read-only Test")
         self.tests.append(section7)
         section7.add_test_case(condition_check("Fault Detection Fault Cause - Chip1 read-only Test ",  self.scripts.read_only_test, fault_detct_chip1_f, [0x00, 0x02]))
@@ -643,7 +645,7 @@ class test_environment:
         section9.add_test_case(condition_check("Bad Field Value - Baudrate",    self.scripts.check_bad_commands, unit_baud_f, [0x00, 0x00]))
         section9.add_test_case(condition_check("Bad Field Value - Baudrate",    self.scripts.check_bad_commands, continuous_packet_type_f, [0x00, 0x00]))
         #section9.add_test_case(condition_check("Bad Field Value - Baudrate",   self.scripts.check_bad_commands, unit_baud_f, [0x00, 0x00]))
-        '''
+
 
         section10 = test_section("Write Field Tests")
         self.tests.append(section10)
@@ -658,8 +660,8 @@ class test_environment:
         section10.add_test_case(condition_check("Write Field Data Retention Test - Output Select",         self.scripts.write_field_retention_test, output_select_f,               [0x00, 0x32]))
         section10.add_test_case(condition_check("Write Field Data Retention Test - Accel Consistency",     self.scripts.write_field_retention_test, accel_consistency_en_f,        [0x00, 0x32]))
         section10.add_test_case(condition_check("Write Field Data Retention Test - Rate Sens Consistency", self.scripts.write_field_retention_test, rate_sensor_consistency_en_f,  [0x00, 0x32]))
-
         section10.add_test_case(code("Write Field Data Effectiveness Tests", self.scripts.write_field_effective_test_rate_f, packet_rate_div_f))
+
 
     def run_tests(self):
         for test in self.tests:

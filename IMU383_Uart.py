@@ -145,27 +145,15 @@ class UART_Dev:
 
     # set packet rate = Quiet
     def silence_device(self):
-        #print("Silent Mode ON")
         retry = 0
         self.send_message([0x53,0x46,0x05,0x01,0x00,0x01,0x00,0x00])
         response = self.read_response()
-        print "SD:raw_resp", response
 
         while(True):
             response = self.read_response()
             if not response:
                 break
-            print "SD:waiting for SF ", response
-        print "SD:Device in quiet mode", response
-        '''
-        while(response[0] != 'SF' and retry < 10):
-            response = self.read_response()
-            print "SD:waiting for SF ", response
-            retry = retry+1
-        #print response
-        #response = self.imu383_command("SF",quiet_field)
 
-        '''
     # returns true if ping was successful
     def ping_device(self):
         self.send_message(ping)
@@ -181,5 +169,3 @@ class UART_Dev:
         while(response[0] != "SR"):
             response = self.read_response()
         time.sleep(2)# Allow unit to back up
-
-        #print response
