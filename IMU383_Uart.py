@@ -129,6 +129,10 @@ class UART_Dev:
             final_packet = packet + message
             #print final_packet
 
+        nbytes = self.UUT.inWaiting()
+        if nbytes > 0:
+            indata = self.UUT.read(nbytes)
+
         self.UUT.write(self._create_packet(final_packet))
         response = self.read_response()
 
