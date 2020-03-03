@@ -450,14 +450,23 @@ class test_scripts:
         # Convert from Hex list to ASCII
         type = ''.join(hex(val)[2:] for val in packet_type)
 
+        nbytes = test_scripts.uut.UUT.inWaiting()
+        if nbytes > 0:
+            indata = test_scripts.uut.UUT.read(nbytes)
+            #print indata
+
+        t0 = time.time()
+        while(time.time() - t0 < 2):
+            response = test_scripts.uut.read_response()
+
         test_time = 10
         t0 = time.time()
         count = 0
-
         while(time.time() - t0 < test_time):
+            #print count, time.time(), t0
             response = test_scripts.uut.read_response()
             #print response
-            # Count up when S0 packet recceived
+            # Count up when S0/S1 packet recceived
             if response and response[0] == type.decode("hex"):
                 #print response
                 count = count+1
@@ -470,7 +479,7 @@ class test_scripts:
     def write_field_effective_test_rate_f(self):
         field = packet_rate_div_f
         val = [0x00, 0x01]      #packet rate div value
-        rate_hz = 100
+        expected_rate_hz = 100
         actual_rate_hz = 0
 
         '''Setup'''
@@ -480,28 +489,29 @@ class test_scripts:
         # store original field value before changing
         orig_field_val.append(int(data[-4:-2],16))
         orig_field_val.append(int(data[-2:],16))     #read last two characters
+        #print "Orig: ",orig_field_val
 
         data = test_scripts.uut.imu383_command("SF", continuous_packet_type_f + S1)
         test_scripts.uut.silence_device()
         uut_packet_rate = self._get_packet_rate(S1)
-        #print uut_packet_rate
+        #print "Silent PacketRate:",uut_packet_rate
 
         '''Execute'''
         # Write to packet rate field
         data = test_scripts.uut.imu383_command("WF", field + val)
-
+        #print "data1: ", data
         # packet rate souldn't change
         uut_packet_rate = self._get_packet_rate(S1)
         if(uut_packet_rate != 0):
-            return False
+            return False        # packet rate changed when it shouldn't
         else:
-            #restart the device if the rate hasn't changed to see
+            # restart the device if the rate hasn't changed
             test_scripts.uut.restart_device()
             data = test_scripts.uut.imu383_command("SF", continuous_packet_type_f + S1)
             #data = test_scripts.uut.imu383_command("RF", field)
-            #print data
+            #print "data2: ", data
             actual_rate_hz = self._get_packet_rate(S1)
-            #print actual_rate_hz
+            #print "rateHz: ", actual_rate_hz
 
         '''Reset to Original'''
         test_scripts.uut.imu383_command("WF", orig_field_val)
@@ -509,7 +519,7 @@ class test_scripts:
         test_scripts.uut.silence_device()
         test_scripts.uut.imu383_command("RF", field)
 
-        if(actual_rate_hz == rate_hz):
+        if(actual_rate_hz == expected_rate_hz):
             return True
         else:
             return False
@@ -586,7 +596,6 @@ class test_environment:
         section5.add_test_case(code("Continuous Packet Type S0 Functional Test",  self.scripts.continuous_packet_type_S0))
         section5.add_test_case(code("Continuous Packet Type S1 Functional Test",  self.scripts.continuous_packet_type_S1))
 
-
         section6 = test_section("Orientation Functional Test")
         self.tests.append(section6)
         section6.add_test_case(condition_check("Orientation Functional Test 0x0000",        self.scripts.orientation, [0x00, 0x00]))
@@ -627,7 +636,6 @@ class test_environment:
         section6.add_test_case(condition_check("Orientation Functional Test Bad Command11", self.scripts.check_bad_commands, orientation_f ,[0xDD, 0xDD]))
         section6.add_test_case(condition_check("Orientation Functional Test Bad Command12", self.scripts.check_bad_commands, orientation_f ,[0xEE, 0xEE]))
 
-
         section7 = test_section("Read-only Test")
         self.tests.append(section7)
         section7.add_test_case(condition_check("Fault Detection Fault Cause - Chip1 read-only Test ",  self.scripts.read_only_test, fault_detct_chip1_f, [0x00, 0x02]))
@@ -636,22 +644,20 @@ class test_environment:
 
         section8 = test_section("Fault Detection Field Test")
         self.tests.append(section8)
-        section8.add_test_case(condition_check("Fault Detection Field Test ",  self.scripts.fault_detection_field_test, accel_consistency_en_f, [0x00, 0x02]))
-        section8.add_test_case(condition_check("Fault Detection Field Test ",  self.scripts.fault_detection_field_test, rate_sensor_consistency_en_f, [0x00, 0x03]))
+        section8.add_test_case(condition_check("Fault Detection Field Test - accel ",   self.scripts.fault_detection_field_test, accel_consistency_en_f,         [0x00, 0x02]))
+        section8.add_test_case(condition_check("Fault Detection Field Test - rate ",    self.scripts.fault_detection_field_test, rate_sensor_consistency_en_f,   [0x00, 0x03]))
 
         section9 = test_section("Bad Field Values")
         self.tests.append(section9)
-        section9.add_test_case(condition_check("Bad Field Value - Packet Rate", self.scripts.check_bad_commands, packet_rate_div_f, [0x00, 0x03]))
-        section9.add_test_case(condition_check("Bad Field Value - Baudrate",    self.scripts.check_bad_commands, unit_baud_f, [0x00, 0x00]))
-        section9.add_test_case(condition_check("Bad Field Value - Baudrate",    self.scripts.check_bad_commands, continuous_packet_type_f, [0x00, 0x00]))
-        #section9.add_test_case(condition_check("Bad Field Value - Baudrate",   self.scripts.check_bad_commands, unit_baud_f, [0x00, 0x00]))
+        section9.add_test_case(condition_check("Bad Field Value - Packet Rate",             self.scripts.check_bad_commands, packet_rate_div_f,         [0x00, 0x03]))
+        section9.add_test_case(condition_check("Bad Field Value - Baudrate",                self.scripts.check_bad_commands, unit_baud_f,               [0x00, 0x00]))
+        section9.add_test_case(condition_check("Bad Field Value - Continuous Packet Type",  self.scripts.check_bad_commands, continuous_packet_type_f,  [0x00, 0x00]))
 
 
         section10 = test_section("Write Field Tests")
         self.tests.append(section10)
-        #section10.add_test_case(code("Write Field Data Retention Test - Packet Rate Div",        self.scripts.print_default_eprom))
-        section10.add_test_case(condition_check("Write Field Data Retention Test - Packet Rate Div",        self.scripts.write_field_retention_test, packet_rate_div_f,             [0x00, 0x32]))
 
+        section10.add_test_case(condition_check("Write Field Data Retention Test - Packet Rate Div",       self.scripts.write_field_retention_test, packet_rate_div_f,             [0x00, 0x32]))
         section10.add_test_case(condition_check("Write Field Data Retention Test - Continuous Packet Type",self.scripts.write_field_retention_test, continuous_packet_type_f,      [0x53, 0x31]))
         section10.add_test_case(condition_check("Write Field Data Retention Test - Orientation",           self.scripts.write_field_retention_test, orientation_f,                 [0x00, 0x62]))
         section10.add_test_case(condition_check("Write Field Data Retention Test - Gyro Filter Settings",  self.scripts.write_field_retention_test, gyro_filter_setting_f,         [0x00, 0x32]))
@@ -660,6 +666,7 @@ class test_environment:
         section10.add_test_case(condition_check("Write Field Data Retention Test - Output Select",         self.scripts.write_field_retention_test, output_select_f,               [0x00, 0x32]))
         section10.add_test_case(condition_check("Write Field Data Retention Test - Accel Consistency",     self.scripts.write_field_retention_test, accel_consistency_en_f,        [0x00, 0x32]))
         section10.add_test_case(condition_check("Write Field Data Retention Test - Rate Sens Consistency", self.scripts.write_field_retention_test, rate_sensor_consistency_en_f,  [0x00, 0x32]))
+
         section10.add_test_case(code("Write Field Data Effectiveness Tests", self.scripts.write_field_effective_test_rate_f, packet_rate_div_f))
 
 
