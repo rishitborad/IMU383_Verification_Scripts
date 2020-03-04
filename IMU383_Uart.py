@@ -5,7 +5,8 @@ from CRC16_class import CRC16
 ping        = [0x50,0x4B,0x00]
 quiet_field = [0x00,0x01,0x00,0x00]
 echo        = [0x43,0x48,0x01,0x41]
-
+ID          = [0x49,0x44]
+VR          = [0x56, 0x52]
 crc16 = CRC16()
 
 ###########################################################
@@ -173,3 +174,27 @@ class UART_Dev:
         while(response[0] != "SR"):
             response = self.read_response()
         time.sleep(2)# Allow unit to back up
+
+    def get_serial_number(self):
+        response = self.imu383_command("GP", ID)
+
+        while(response[0] != "ID"):
+            response = self.read_response()
+
+        serial_number = response[2][:8]
+        model_string = response[2][8:]
+
+        return int(serial_number,16), model_string.decode("hex")
+
+    def get_version(self):
+        response = self.imu383_command("GP", VR)
+
+        while(response[0] != "VR"):
+            response = self.read_response()
+
+        major = int(response[2][0],16)
+        minor = int(response[2][1],16)
+        patch = int(response[2][2],16)
+        stage = int(response[2][3],16)
+        build = int(response[2][4],16)
+        return str(major)+"."+str(minor)+"."+str(patch)+"."+str(stage)+"."+str(build)
