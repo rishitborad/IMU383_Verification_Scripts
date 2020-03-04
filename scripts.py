@@ -66,22 +66,29 @@ class test_scripts:
 
     def default_baudrate_test(self):
         return self.echo_test()
+
     def communication_test(self):
         return self.echo_test()
+
     def header_test(self):
         return self.echo_test()
+
     def payload_length_test(self):
         return self.echo_test()
+
     def payload_test(self):
         return self.echo_test()
+
     def CRC_test(self):
         return self.echo_test
+
     def polled_mode_test(self):
         response = test_scripts.uut.imu383_command("GP", S0)
         if(response[0] == 'S0'):
             return True
         else:
             return False
+
     def continuouse_mode_test(self):
         data = test_scripts.uut.imu383_command("SF", continuous_packet_type_f + S0)
         data = test_scripts.uut.imu383_command("SF", packet_rate_div_f + [0x00,0x32])
@@ -115,6 +122,7 @@ class test_scripts:
             return False
         else:
             return True
+
     def read_field_test(self, field):
         response = test_scripts.uut.imu383_command("RF", field)
         if not response:
@@ -191,7 +199,7 @@ class test_scripts:
 
         '''Setup'''
         # Set S0 as continuous packet type
-        data = test_scripts.uut.imu383_command("SF",[0x00,0x03,0x53,0x30])
+        data = test_scripts.uut.imu383_command("SF", continuous_packet_type_f + S0)
 
         test_time = 20
         field = packet_rate_div_f      # Packet Rate Div Field Address
