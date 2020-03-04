@@ -15,12 +15,12 @@ class test_section:
         test_case.test_id = self.total_test_cases
 
     def run(self):
-        print "\t" + str(self.section_id) + "." + self.section_name + "\r\n"
+        print "\t" + str(self.section_id) + ". " + self.section_name + "\r\n"
         counter = 0
         for test in self.test_cases:
             #self.result = test.run()
             counter = counter + 1
-            id = str(self.section_id) + "." + str(counter) + ".\t"
+            id = str(self.section_id) + "." + str(counter) + ". "
             test.run(id)
 
 #############################################
