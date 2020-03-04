@@ -362,15 +362,18 @@ class test_scripts:
     def read_only_test(self, field, val):
         '''Setup'''
         data = test_scripts.uut.imu383_command("SF", field + val)
-        #print data
         data = test_scripts.uut.imu383_command("GF", field)
-        #print data
 
         '''Execute'''
+        actual = int(data[-4:], 16)
+        expected = int(''.join(hex(i)[2:] for i in val), 16)
 
         '''Result'''
+        if(actual == expected):
 
-        return False
+            return False
+        else:
+            return True
 
     def fault_detection_field_test(self, field, val):
         '''Setup'''
@@ -506,10 +509,12 @@ class test_scripts:
         #print data, field+val
         test_scripts.uut.restart_device()
         test_scripts.uut.silence_device()
-        data = test_scripts.uut.imu383_command("GF", field)
-
+        data = test_scripts.uut.imu383_command("RF", field)
+        #print data
         '''Result'''
+        #print int(data[-4:],16), orig_field_val
         # verify that GF value doesnt retain after power cycle and matches with EEPROM default value
+
         if(int(data[-4:],16) == orig_field_val):
             return True
         else:
@@ -540,7 +545,6 @@ class test_scripts:
 
         return True
 
-
 #################################################
 
 class test_environment:
@@ -551,7 +555,7 @@ class test_environment:
 
     # Add test scetions & test scripts here
     def setup_tests(self):
-
+        
         section1 = test_section("UART Transaction Verification")
         self.test_sections.append(section1)
         section1.add_test_case(code("Default Baudrate Test",   self.scripts.default_baudrate_test))
@@ -659,17 +663,16 @@ class test_environment:
         section7.add_test_case(condition_check("Fault Detection Fault Cause - Chip2 read-only Test ",  self.scripts.read_only_test, fault_detct_chip2_f, [0x00, 0x02]))
         section7.add_test_case(condition_check("Fault Detection Fault Cause - Chip3 read-only Test ",  self.scripts.read_only_test, fault_detct_chip3_f, [0x00, 0x02]))
 
-        section8 = test_section("Fault Detection Field Test")
-        self.test_sections.append(section8)
-        section8.add_test_case(condition_check("Fault Detection Field Test - accel ",   self.scripts.fault_detection_field_test, accel_consistency_en_f,         [0x00, 0x02]))
-        section8.add_test_case(condition_check("Fault Detection Field Test - rate ",    self.scripts.fault_detection_field_test, rate_sensor_consistency_en_f,   [0x00, 0x03]))
+        #section8 = test_section("Fault Detection Field Test")
+        #self.test_sections.append(section8)
+        #section8.add_test_case(condition_check("Fault Detection Field Test - accel ",   self.scripts.fault_detection_field_test, accel_consistency_en_f,         [0x00, 0x02]))
+        #section8.add_test_case(condition_check("Fault Detection Field Test - rate ",    self.scripts.fault_detection_field_test, rate_sensor_consistency_en_f,   [0x00, 0x03]))
 
         section9 = test_section("Bad Field Values")
         self.test_sections.append(section9)
         section9.add_test_case(condition_check("Bad Field Value - Packet Rate",             self.scripts.check_bad_commands, packet_rate_div_f,         [0x00, 0x03]))
         section9.add_test_case(condition_check("Bad Field Value - Baudrate",                self.scripts.check_bad_commands, unit_baud_f,               [0x00, 0x00]))
         section9.add_test_case(condition_check("Bad Field Value - Continuous Packet Type",  self.scripts.check_bad_commands, continuous_packet_type_f,  [0x00, 0x00]))
-
 
         section10 = test_section("Write Field Tests")
         self.test_sections.append(section10)
@@ -684,6 +687,7 @@ class test_environment:
         section10.add_test_case(condition_check("Write Field Data Retention Test - Accel Consistency",     self.scripts.write_field_retention_test, accel_consistency_en_f,        [0x00, 0x32]))
         section10.add_test_case(condition_check("Write Field Data Retention Test - Rate Sens Consistency", self.scripts.write_field_retention_test, rate_sensor_consistency_en_f,  [0x00, 0x32]))
         section10.add_test_case(code("Write Field Data Effectiveness Tests", self.scripts.write_field_effective_test_rate_f))
+
         section10.add_test_case(condition_check("Set Field Data Retention Test - Packet Rate Div",       self.scripts.set_field_retention_test, packet_rate_div_f,             [0x00, 0x32]))
         section10.add_test_case(condition_check("Set Field Data Retention Test - Continuous Packet Type",self.scripts.set_field_retention_test, continuous_packet_type_f,      [0x53, 0x30]))
         section10.add_test_case(condition_check("Set Field Data Retention Test - Orientation",           self.scripts.set_field_retention_test, orientation_f,                 [0x00, 0x62]))
@@ -695,15 +699,21 @@ class test_environment:
         section10.add_test_case(condition_check("Set Field Data Retention Test - Rate Sens Consistency", self.scripts.set_field_retention_test, rate_sensor_consistency_en_f,  [0x00, 0x32]))
         section10.add_test_case(code("set Field Data Effectiveness Tests", self.scripts.set_field_effective_test_rate_f))
 
+        '''
+        section11 = test_section("Write Field Tests")
+        self.test_sections.append(section11)
+        section11.add_test_case(code("Temporary tests", self.scripts.temp))
+        '''
+
     def run_tests(self):
         for test in self.test_sections:
             test.run()
 
     def print_results(self):
-        print "Test Results::"
+        print "\tTest Results::"
         for section in self.test_sections:
-            print "Section " + str(section.section_id) + ": " + section.section_name + "\r\n"
+            print "\t\tSection " + str(section.section_id) + ": " + section.section_name + "\r\n"
             for test in section.test_cases:
                 id = str(section.section_id) + "." + str(test.test_id)
-                result_str = "\tPassed --> " if test.result else "\tFailed --> "
+                result_str = "\t\t\tPassed --> " if test.result else "\t\t\tFailed --x "
                 print result_str + id + " " + test.test_case_name + "\r\n"
