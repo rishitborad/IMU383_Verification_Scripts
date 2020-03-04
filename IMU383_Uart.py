@@ -73,7 +73,7 @@ class UART_Dev:
             hex = self.UUT.read(1).encode("hex")
             if(len(hex) == 0):
                 if(time.time() - t0 > timeout):
-                    print "timed out"
+                    #print "timed out"
                     return str_list
 
             elif(hex == '55'):

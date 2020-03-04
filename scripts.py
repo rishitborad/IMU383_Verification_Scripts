@@ -77,23 +77,21 @@ class test_scripts:
     def CRC_test(self):
         return self.echo_test
     def polled_mode_test(self):
-        response = test_scripts.uut.imu383_command("GP", [0x53,0x30])
+        response = test_scripts.uut.imu383_command("GP", S0)
         if(response[0] == 'S0'):
             return True
         else:
             return False
     def continuouse_mode_test(self):
-        data = test_scripts.uut.imu383_command("SF",[0x00,0x03,0x53,0x30])
-        #print data
-        data = test_scripts.uut.imu383_command("SF", [0x00,0x01,0x00,0x32])
-        #print data
+        data = test_scripts.uut.imu383_command("SF", continuous_packet_type_f + S0)
+        data = test_scripts.uut.imu383_command("SF", packet_rate_div_f + [0x00,0x32])
+
         t0 = time.time()
         count = 0
         while(time.time() - t0 < 10.00):
             count = count+1
             response = test_scripts.uut.read_response()
-            #print count
-            #time.sleep(2)
+
         # verify that UUT reads data 20 times in 10 seconds,
         # more ofthen than not it reads 21 times due to time it takes to read
         if(count == 20 or count == 21):
@@ -101,89 +99,68 @@ class test_scripts:
         else:
             return False
 
-    def id_test(self):
-        response = test_scripts.uut.imu383_command("GP", ID)
-        '''
-        payload_len = data[1]
-        payload = data[2]
-        serial_number = payload[:4]
-        model_string = payload[4:]
-        #remaining = payload[]
-        print packet_type
-        print payload_len
-        print payload
-        print bytearray.fromhex(serial_number)
-        print bytearray.fromhex(model_string)
-        '''
-        if(response[0] == 'ID'):
+    def packet_type_test(self, packet_type):
+
+        ptype = ''.join(hex(val)[2:] for val in packet_type)
+
+        response = test_scripts.uut.imu383_command("GP", packet_type)
+        if(response[0] == ptype.decode("hex")):
             return True
         else:
             return False
 
-    def version_data_test(self):
-        response = test_scripts.uut.imu383_command("GP", VR)
-        if(response[0] == 'VR'):
-            return True
-        else:
-            return False
-    def Test0_test(self):
-        response = test_scripts.uut.imu383_command("GP", T0)
-        if(response[0] == 'T0'):
-            return True
-        else:
-            return False
-    def scaled_sensor0_test(self):
-        response = test_scripts.uut.imu383_command("GP", S0)
-        if(response[0] == 'S0'):
-            return True
-        else:
-            return False
-    def scaled_sensor1_test(self):
-        response = test_scripts.uut.imu383_command("GP", S1)
-        if(response[0] == 'S1'):
-            return True
-        else:
-            return False
-
-    def get_field_test(self):
-        response = test_scripts.uut.imu383_command("GF", [0x00, 0x01])
+    def get_field_test(self, field):
+        response = test_scripts.uut.imu383_command("GF", field)
         if not response:
             return False
         else:
             return True
-    def read_field_test(self):
-        response = test_scripts.uut.imu383_command("RF", [0x00, 0x01])
+    def read_field_test(self, field):
+        response = test_scripts.uut.imu383_command("RF", field)
         if not response:
             return False
         else:
             return True
 
-    def set_field_test(self):
-        response = test_scripts.uut.imu383_command("SF", [0x00, 0x01, 0x00, 0x00])
+    def set_field_test(self, field ,val):
+        response = test_scripts.uut.imu383_command("SF", field + val)
         if not response:
             return False
         else:
             return True
-    def write_field_test(self):
-        response = test_scripts.uut.imu383_command("WF", [0x00, 0x01, 0x00, 0x00])
+
+    def write_field_test(self, field, val):
+        data = test_scripts.uut.imu383_command("RF", field)
+        orig_field_val = []
+        orig_field_val= orig_field_val + field
+        # store original field value before changing
+        orig_field_val.append(int(data[-4:-2],16))# MSB
+        orig_field_val.append(int(data[-2:],16))  # LSB
+
+        response = test_scripts.uut.imu383_command("WF", field + [0x00, 0x00])
+
+        # reset back to original
+        test_scripts.uut.imu383_command("WF", orig_field_val)
+
         if not response:
             return False
         else:
             return True
 
     def verify_packet_types(self):
+        test_scripts.uut.silence_device()
         ping_test = test_scripts.uut.ping_device()
         echo_test = self.echo_test()
         get_packet_test = self.polled_mode_test()
-        id = self.id_test()
-        vr = self.version_data_test()
-        t0 = self.Test0_test()
-        s0 = self.scaled_sensor0_test()
-        s1 = self.scaled_sensor1_test()
-        rf = self.read_field_test()
-        wf = self.write_field_test()
-        gf = self.get_field_test()
-        sf = self.set_field_test()
+        id = self.packet_type_test(ID)
+        vr = self.packet_type_test(VR)
+        t0 = self.packet_type_test(T0)
+        s0 = self.packet_type_test(S0)
+        s1 = self.packet_type_test(S1)
+        rf = self.read_field_test(packet_rate_div_f)
+        wf = self.write_field_test(packet_rate_div_f, [0x00, 0x00])
+        gf = self.get_field_test(packet_rate_div_f)
+        sf = self.set_field_test(packet_rate_div_f, [0x00, 0x00])
 
         return ping_test and echo_test and get_packet_test and id and vr    \
                 and t0 and s0 and s1 and gf and rf and wf and sf
@@ -194,6 +171,8 @@ class test_scripts:
         if(int(response[6:],16) == param):
             return True
         else:
+            #print "actual ", int(response[6:],16)
+            #print "expected ", param
             return False
 
     def gf_default_test(self, cmd, param):
@@ -202,6 +181,8 @@ class test_scripts:
         if(int(response[6:],16) == param):
             return True
         else:
+            #print "actual ", int(response[6:],16)
+            #print "expected ", param
             return False
 
     # rate_val is packet_rate_value in list, eg:[0x00, 0x05]
@@ -328,7 +309,7 @@ class test_scripts:
                 timer = self.combine_reg_ushort(msg[20],msg[21]) * 15.259022
                 BIT = self.combine_reg_ushort(msg[22],msg[23])
                 '''Result'''
-                #print board_temp
+
                 if( not (lower_limit_accel < x_accel and x_accel < upper_limit_accel) and\
                     (lower_limit_accel < y_accel and y_accel < upper_limit_accel) and\
                     (lower_limit_accel < z_accel and z_accel < upper_limit_accel) and\
@@ -343,14 +324,12 @@ class test_scripts:
     def orientation(self, config, void):
         '''Setup'''
         data = test_scripts.uut.imu383_command("SF", orientation_f + config)
-        #print data
         test_scripts.uut.silence_device()
-
         orientation_config = ''.join(hex(val)[2:] for val in config)
-        #print int(orientation_config,16)
+
         '''Execute'''
         data = test_scripts.uut.imu383_command("GF", orientation_f)
-        print "orientation", data
+
         '''Result'''
         if(int(data[6:], 16) == int(orientation_config, 16)):
             return True
@@ -368,9 +347,7 @@ class test_scripts:
         if( data[0].encode("hex") == nak):
             return True
         else:
-            #print data
             data = test_scripts.uut.imu383_command("GF", field)
-            #print data
             return False
 
 
@@ -390,9 +367,7 @@ class test_scripts:
     def fault_detection_field_test(self, field, val):
         '''Setup'''
         data = test_scripts.uut.imu383_command("SF", field + val)
-        #print data
         data = test_scripts.uut.imu383_command("GF", field)
-        #print data
 
         '''Execute'''
 
@@ -405,9 +380,8 @@ class test_scripts:
         orig_field_val = []
         orig_field_val= orig_field_val + [0x00,0x01]
         # store original field value before changing
-        orig_field_val.append(int(data[-4:-2],16))
-        orig_field_val.append(int(data[-2:],16))     #read last two characters
-        #print orig_field_val
+        orig_field_val.append(int(data[-4:-2],16))  # MSB
+        orig_field_val.append(int(data[-2:],16))    # LSB
 
     def write_field_retention_test(self, field, val):
         '''Setup'''
@@ -416,28 +390,20 @@ class test_scripts:
         orig_field_val = []
         orig_field_val= orig_field_val + field
         # store original field value before changing
-        orig_field_val.append(int(data[-4:-2],16))
-        orig_field_val.append(int(data[-2:],16))     #read last two characters
-        #print "orig_val",orig_field_val
+        orig_field_val.append(int(data[-4:-2],16))# MSB
+        orig_field_val.append(int(data[-2:],16))  # LSB
+
         '''Execute'''
         data = test_scripts.uut.imu383_command("WF", field + val)
-        #print "writeField",data
         test_scripts.uut.restart_device()
-        #print "1device restarted"
-
         test_scripts.uut.silence_device()
-        #print "1device silenced"
         data = test_scripts.uut.imu383_command("RF", field)
-        #print data
+
         '''Reset to Original'''
         data0 = test_scripts.uut.imu383_command("WF", orig_field_val)
-        #print data0
         test_scripts.uut.restart_device()
-        #print "2device restarted"
         test_scripts.uut.silence_device()
-        #print "2device silenced"
         data0 = test_scripts.uut.imu383_command("RF", field)
-        #print data0
 
         '''Result'''
 
@@ -489,17 +455,14 @@ class test_scripts:
         # store original field value before changing
         orig_field_val.append(int(data[-4:-2],16))
         orig_field_val.append(int(data[-2:],16))     #read last two characters
-        #print "Orig: ",orig_field_val
 
         data = test_scripts.uut.imu383_command("SF", continuous_packet_type_f + S1)
         test_scripts.uut.silence_device()
         uut_packet_rate = self._get_packet_rate(S1)
-        #print "Silent PacketRate:",uut_packet_rate
 
         '''Execute'''
         # Write to packet rate field
         data = test_scripts.uut.imu383_command("WF", field + val)
-        #print "data1: ", data
         # packet rate souldn't change
         uut_packet_rate = self._get_packet_rate(S1)
         if(uut_packet_rate != 0):
@@ -508,10 +471,7 @@ class test_scripts:
             # restart the device if the rate hasn't changed
             test_scripts.uut.restart_device()
             data = test_scripts.uut.imu383_command("SF", continuous_packet_type_f + S1)
-            #data = test_scripts.uut.imu383_command("RF", field)
-            #print "data2: ", data
             actual_rate_hz = self._get_packet_rate(S1)
-            #print "rateHz: ", actual_rate_hz
 
         '''Reset to Original'''
         test_scripts.uut.imu383_command("WF", orig_field_val)
@@ -519,10 +479,59 @@ class test_scripts:
         test_scripts.uut.silence_device()
         test_scripts.uut.imu383_command("RF", field)
 
+        # Verify that Packet rate is as expected after power cycle
         if(actual_rate_hz == expected_rate_hz):
             return True
         else:
             return False
+
+    def set_field_retention_test(self, field, val):
+        '''Setup'''
+        test_scripts.uut.silence_device()
+        data = test_scripts.uut.imu383_command("RF", field)
+        #print data
+        orig_field_val = int(data[-4:],16)     #read last two characters
+        #print orig_field_val
+
+        '''Execute'''
+        data = test_scripts.uut.imu383_command("SF", field + val)
+        #print data, field+val
+        test_scripts.uut.restart_device()
+        test_scripts.uut.silence_device()
+        data = test_scripts.uut.imu383_command("GF", field)
+
+        '''Result'''
+        # verify that GF value doesnt retain after power cycle and matches with EEPROM default value
+        if(int(data[-4:],16) == orig_field_val):
+            return True
+        else:
+            return False
+
+    def set_field_effective_test_rate_f(self):
+        field = continuous_packet_type_f
+
+        '''Setup'''
+        data = test_scripts.uut.imu383_command("RF", field)
+        orig_field_val = data[-4:]
+
+        data = test_scripts.uut.imu383_command("SF", continuous_packet_type_f + S0)
+        data = test_scripts.uut.imu383_command("SF", packet_rate_div_f + [0x00,0x01])
+
+        packet = test_scripts.uut.read_response();
+        ptype = ''.join(hex(val)[2:] for val in S0)
+
+        if(packet[0] != ptype.decode("hex")):
+            return False
+
+        test_scripts.uut.restart_device()
+        data = test_scripts.uut.imu383_command("SF", packet_rate_div_f + [0x00,0x01])
+        packet = test_scripts.uut.read_response();
+        #print packet
+        if(packet[0] != orig_field_val.decode("hex")):
+            return False
+
+        return True
+
 
 #################################################
 
@@ -530,13 +539,13 @@ class test_environment:
 
     def __init__(self, device):
         self.scripts = test_scripts(device)
-        self.tests = []
+        self.test_sections = []
 
     # Add test scetions & test scripts here
     def setup_tests(self):
 
         section1 = test_section("UART Transaction Verification")
-        self.tests.append(section1)
+        self.test_sections.append(section1)
         section1.add_test_case(code("Default Baudrate Test",   self.scripts.default_baudrate_test))
         section1.add_test_case(code("Comminication Test",      self.scripts.communication_test))
         section1.add_test_case(code("Header Test",             self.scripts.header_test))
@@ -548,15 +557,15 @@ class test_environment:
         section1.add_test_case(code("Verify Packet Types",     self.scripts.verify_packet_types))
 
         section2 = test_section("Read Field Default Checks")
-        self.tests.append(section2)
-        section2.add_test_case(condition_check("Packet Rate Divider Default",                 self.scripts.rf_default_test, packet_rate_div_f,              0x0000))
-        section2.add_test_case(condition_check("Unit Baudrate Default",                       self.scripts.rf_default_test, unit_baud_f,                    0x0005))
-        section2.add_test_case(condition_check("Continuous Packet Type Default",              self.scripts.rf_default_test, continuous_packet_type_f,       0x5330))
+        self.test_sections.append(section2)
+        section2.add_test_case(condition_check("Packet Rate Divider Default",                 self.scripts.rf_default_test, packet_rate_div_f,              0x0001))
+        section2.add_test_case(condition_check("Unit Baudrate Default",                       self.scripts.rf_default_test, unit_baud_f,                    0x0006))
+        section2.add_test_case(condition_check("Continuous Packet Type Default",              self.scripts.rf_default_test, continuous_packet_type_f,       0x534D))
         section2.add_test_case(condition_check("Gyro Filter Setting Default",                 self.scripts.rf_default_test, gyro_filter_setting_f,          0x0000))
         section2.add_test_case(condition_check("Accelerometer Filter Setting Default",        self.scripts.rf_default_test, accel_filter_setting_f,         0x0000))
         section2.add_test_case(condition_check("Orientation Default",                         self.scripts.rf_default_test, orientation_f,                  0x006B))
-        section2.add_test_case(condition_check("Sensor Enable Setting Default",               self.scripts.rf_default_test, sensor_enable_f,                0x0005))
-        section2.add_test_case(condition_check("Output Select Setting Default",               self.scripts.rf_default_test, output_select_f,                0x0000))
+        section2.add_test_case(condition_check("Sensor Enable Setting Default",               self.scripts.rf_default_test, sensor_enable_f,                0x0007))
+        section2.add_test_case(condition_check("Output Select Setting Default",               self.scripts.rf_default_test, output_select_f,                0x0007))
         section2.add_test_case(condition_check("Fault Detection - Chip1 Default",             self.scripts.rf_default_test, fault_detct_chip1_f,            0xFFFF))
         section2.add_test_case(condition_check("Fault Detection - Chip2 Default",             self.scripts.rf_default_test, fault_detct_chip2_f,            0xFFFF))
         section2.add_test_case(condition_check("Fault Detection - Chip3 Default",             self.scripts.rf_default_test, fault_detct_chip3_f,            0xFFFF))
@@ -564,15 +573,15 @@ class test_environment:
         section2.add_test_case(condition_check("Rate-Sensor Consistency Check Enable Default",self.scripts.rf_default_test, rate_sensor_consistency_en_f,   0x0001))
 
         section3 = test_section("Get Field Default Checks")
-        self.tests.append(section3)
-        section3.add_test_case(condition_check("Packet Rate Divider Default",                 self.scripts.gf_default_test, packet_rate_div_f,              0x0000))
-        section3.add_test_case(condition_check("Unit Baudrate Default",                       self.scripts.gf_default_test, unit_baud_f,                    0x0005))
-        section3.add_test_case(condition_check("Continuous Packet Type Default",              self.scripts.gf_default_test, continuous_packet_type_f,       0x5330))
+        self.test_sections.append(section3)
+        section3.add_test_case(condition_check("Packet Rate Divider Default",                 self.scripts.gf_default_test, packet_rate_div_f,              0x0001))
+        section3.add_test_case(condition_check("Unit Baudrate Default",                       self.scripts.gf_default_test, unit_baud_f,                    0x0006))
+        section3.add_test_case(condition_check("Continuous Packet Type Default",              self.scripts.gf_default_test, continuous_packet_type_f,       0x534D))
         section3.add_test_case(condition_check("Gyro Filter Setting Default",                 self.scripts.gf_default_test, gyro_filter_setting_f,          0x0000))
         section3.add_test_case(condition_check("Accelerometer Filter Setting Default",        self.scripts.gf_default_test, accel_filter_setting_f,         0x0000))
         section3.add_test_case(condition_check("Orientation Default",                         self.scripts.gf_default_test, orientation_f,                  0x006B))
-        section3.add_test_case(condition_check("Sensor Enable Setting Default",               self.scripts.gf_default_test, sensor_enable_f,                0x0005))
-        section3.add_test_case(condition_check("Output Select Setting Default",               self.scripts.gf_default_test, output_select_f,                0x0000))
+        section3.add_test_case(condition_check("Sensor Enable Setting Default",               self.scripts.gf_default_test, sensor_enable_f,                0x0007))
+        section3.add_test_case(condition_check("Output Select Setting Default",               self.scripts.gf_default_test, output_select_f,                0x0007))
         section3.add_test_case(condition_check("Fault Detection - Chip1 Default",             self.scripts.gf_default_test, fault_detct_chip1_f,            0xFFFF))
         section3.add_test_case(condition_check("Fault Detection - Chip2 Default",             self.scripts.gf_default_test, fault_detct_chip2_f,            0xFFFF))
         section3.add_test_case(condition_check("Fault Detection - Chip3 Default",             self.scripts.gf_default_test, fault_detct_chip3_f,            0xFFFF))
@@ -580,7 +589,7 @@ class test_environment:
         section3.add_test_case(condition_check("Rate-Sensor Consistency Check Enable Default",self.scripts.gf_default_test, rate_sensor_consistency_en_f,   0x0001))
 
         section4 = test_section("Packet Rate Divider Functional Test")
-        self.tests.append(section4)
+        self.test_sections.append(section4)
         section4.add_test_case(condition_check("Packet Rate Div 100Hz",  self.scripts.packet_rate_div, [0x00,0x01], 100))
         section4.add_test_case(condition_check("Packet Rate Div 50Hz",   self.scripts.packet_rate_div, [0x00,0x02], 50))
         section4.add_test_case(condition_check("Packet Rate Div 25Hz",   self.scripts.packet_rate_div, [0x00,0x04], 25))
@@ -592,12 +601,12 @@ class test_environment:
         section4.add_test_case(condition_check("Packet Rate Div Quiet",  self.scripts.packet_rate_div, [0x00,0x00], 0))
 
         section5 = test_section("Continuous Packet Type Functional Test")
-        self.tests.append(section5)
+        self.test_sections.append(section5)
         section5.add_test_case(code("Continuous Packet Type S0 Functional Test",  self.scripts.continuous_packet_type_S0))
         section5.add_test_case(code("Continuous Packet Type S1 Functional Test",  self.scripts.continuous_packet_type_S1))
 
         section6 = test_section("Orientation Functional Test")
-        self.tests.append(section6)
+        self.test_sections.append(section6)
         section6.add_test_case(condition_check("Orientation Functional Test 0x0000",        self.scripts.orientation, [0x00, 0x00]))
         section6.add_test_case(condition_check("Orientation Functional Test 0x0009",        self.scripts.orientation, [0x00, 0x09]))
         section6.add_test_case(condition_check("Orientation Functional Test 0x0023",        self.scripts.orientation, [0x00, 0x23]))
@@ -637,28 +646,28 @@ class test_environment:
         section6.add_test_case(condition_check("Orientation Functional Test Bad Command12", self.scripts.check_bad_commands, orientation_f ,[0xEE, 0xEE]))
 
         section7 = test_section("Read-only Test")
-        self.tests.append(section7)
+        self.test_sections.append(section7)
         section7.add_test_case(condition_check("Fault Detection Fault Cause - Chip1 read-only Test ",  self.scripts.read_only_test, fault_detct_chip1_f, [0x00, 0x02]))
         section7.add_test_case(condition_check("Fault Detection Fault Cause - Chip2 read-only Test ",  self.scripts.read_only_test, fault_detct_chip2_f, [0x00, 0x02]))
         section7.add_test_case(condition_check("Fault Detection Fault Cause - Chip3 read-only Test ",  self.scripts.read_only_test, fault_detct_chip3_f, [0x00, 0x02]))
 
         section8 = test_section("Fault Detection Field Test")
-        self.tests.append(section8)
+        self.test_sections.append(section8)
         section8.add_test_case(condition_check("Fault Detection Field Test - accel ",   self.scripts.fault_detection_field_test, accel_consistency_en_f,         [0x00, 0x02]))
         section8.add_test_case(condition_check("Fault Detection Field Test - rate ",    self.scripts.fault_detection_field_test, rate_sensor_consistency_en_f,   [0x00, 0x03]))
 
         section9 = test_section("Bad Field Values")
-        self.tests.append(section9)
+        self.test_sections.append(section9)
         section9.add_test_case(condition_check("Bad Field Value - Packet Rate",             self.scripts.check_bad_commands, packet_rate_div_f,         [0x00, 0x03]))
         section9.add_test_case(condition_check("Bad Field Value - Baudrate",                self.scripts.check_bad_commands, unit_baud_f,               [0x00, 0x00]))
         section9.add_test_case(condition_check("Bad Field Value - Continuous Packet Type",  self.scripts.check_bad_commands, continuous_packet_type_f,  [0x00, 0x00]))
 
 
         section10 = test_section("Write Field Tests")
-        self.tests.append(section10)
+        self.test_sections.append(section10)
 
         section10.add_test_case(condition_check("Write Field Data Retention Test - Packet Rate Div",       self.scripts.write_field_retention_test, packet_rate_div_f,             [0x00, 0x32]))
-        section10.add_test_case(condition_check("Write Field Data Retention Test - Continuous Packet Type",self.scripts.write_field_retention_test, continuous_packet_type_f,      [0x53, 0x31]))
+        section10.add_test_case(condition_check("Write Field Data Retention Test - Continuous Packet Type",self.scripts.write_field_retention_test, continuous_packet_type_f,      [0x53, 0x30]))
         section10.add_test_case(condition_check("Write Field Data Retention Test - Orientation",           self.scripts.write_field_retention_test, orientation_f,                 [0x00, 0x62]))
         section10.add_test_case(condition_check("Write Field Data Retention Test - Gyro Filter Settings",  self.scripts.write_field_retention_test, gyro_filter_setting_f,         [0x00, 0x32]))
         section10.add_test_case(condition_check("Write Field Data Retention Test - Accel Filter Settings", self.scripts.write_field_retention_test, accel_filter_setting_f,        [0x00, 0x32]))
@@ -666,17 +675,27 @@ class test_environment:
         section10.add_test_case(condition_check("Write Field Data Retention Test - Output Select",         self.scripts.write_field_retention_test, output_select_f,               [0x00, 0x32]))
         section10.add_test_case(condition_check("Write Field Data Retention Test - Accel Consistency",     self.scripts.write_field_retention_test, accel_consistency_en_f,        [0x00, 0x32]))
         section10.add_test_case(condition_check("Write Field Data Retention Test - Rate Sens Consistency", self.scripts.write_field_retention_test, rate_sensor_consistency_en_f,  [0x00, 0x32]))
-
-        section10.add_test_case(code("Write Field Data Effectiveness Tests", self.scripts.write_field_effective_test_rate_f, packet_rate_div_f))
-
+        section10.add_test_case(code("Write Field Data Effectiveness Tests", self.scripts.write_field_effective_test_rate_f))
+        section10.add_test_case(condition_check("Set Field Data Retention Test - Packet Rate Div",       self.scripts.set_field_retention_test, packet_rate_div_f,             [0x00, 0x32]))
+        section10.add_test_case(condition_check("Set Field Data Retention Test - Continuous Packet Type",self.scripts.set_field_retention_test, continuous_packet_type_f,      [0x53, 0x30]))
+        section10.add_test_case(condition_check("Set Field Data Retention Test - Orientation",           self.scripts.set_field_retention_test, orientation_f,                 [0x00, 0x62]))
+        section10.add_test_case(condition_check("Set Field Data Retention Test - Gyro Filter Settings",  self.scripts.set_field_retention_test, gyro_filter_setting_f,         [0x00, 0x32]))
+        section10.add_test_case(condition_check("Set Field Data Retention Test - Accel Filter Settings", self.scripts.set_field_retention_test, accel_filter_setting_f,        [0x00, 0x32]))
+        section10.add_test_case(condition_check("Set Field Data Retention Test - Sensor Enable",         self.scripts.set_field_retention_test, sensor_enable_f,               [0x00, 0x32]))
+        section10.add_test_case(condition_check("Set Field Data Retention Test - Output Select",         self.scripts.set_field_retention_test, output_select_f,               [0x00, 0x32]))
+        section10.add_test_case(condition_check("Set Field Data Retention Test - Accel Consistency",     self.scripts.set_field_retention_test, accel_consistency_en_f,        [0x00, 0x32]))
+        section10.add_test_case(condition_check("Set Field Data Retention Test - Rate Sens Consistency", self.scripts.set_field_retention_test, rate_sensor_consistency_en_f,  [0x00, 0x32]))
+        section10.add_test_case(code("set Field Data Effectiveness Tests", self.scripts.set_field_effective_test_rate_f))
 
     def run_tests(self):
-        for test in self.tests:
+        for test in self.test_sections:
             test.run()
 
     def print_results(self):
         print "Test Results::"
-        for test in self.tests:
-            for item in test.test_cases:
-                result_str = item.test_case_name + ": " + "\t\t\t\tPassed" if item.result else item.test_case_name + ": " + "\t\t\t\tFailed"
-                print result_str
+        for section in self.test_sections:
+            print "Section " + str(section.section_id) + ": " + section.section_name + "\r\n"
+            for test in section.test_cases:
+                id = str(section.section_id) + "." + str(test.test_id)
+                result_str = "\tPassed --> " if test.result else "\tFailed --> "
+                print result_str + id + " " + test.test_case_name + "\r\n"
