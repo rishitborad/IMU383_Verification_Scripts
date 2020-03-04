@@ -16,17 +16,18 @@ def continuous_packet_type_test():
 
 if __name__ == "__main__":
 
-    print("\r\n \tIMU383 UART Interface Verification V1.0\r\n")
-
     uut = UART_Dev("/dev/tty.usbserial-A7004TCD", 115200 )
+    print("\r\n \tIMU383 UART Interface Verification V1.0\r\n")
+    serial_number, model = uut.get_serial_number()
+    version = uut.get_version()
+
+    print "\r\n \tUUT Model: ", model
+    print "\r\n \tUUT Serial Number: ", serial_number
+    print "\r\n \tUUT Version: ", version
+
     uut.silence_device()
 
     env = test_environment(uut)
     env.setup_tests()
     env.run_tests()
     env.print_results()
-
-    #ser.write(serial.to_bytes(ping))
-    #print serial.to_bytes(ping)
-    #Quiet_packet = uut.create_packet(Quiet)
-    #uut.set_field_command(quiet_field)
