@@ -1,11 +1,11 @@
 
-class test_section:
+class Test_Section:
     _section_number = 0
 
     def __init__(self, section_name):
         self.section_name = section_name
-        test_section._section_number = test_section._section_number + 1
-        self.section_id = test_section._section_number
+        Test_Section._section_number = Test_Section._section_number + 1
+        self.section_id = Test_Section._section_number
         self.test_cases = []
         self.total_test_cases = 0
 
@@ -25,7 +25,7 @@ class test_section:
 
 #############################################
 
-class test_case:
+class Test_Case:
 
     def __init__(self, case_name, handle = None, cmd = None, param = None):
         self.test_case_name = case_name
@@ -43,7 +43,7 @@ class test_case:
 
 #===========================================#
 
-class condition_check(test_case):
+class Condition_Check(Test_Case):
 
     def run(self, id):
         print "\t\t" + id + self.test_case_name + "\r\n"
@@ -54,7 +54,7 @@ class condition_check(test_case):
 
 #===========================================#
 
-class code(test_case):
+class Code(Test_Case):
 
     def run(self, id):
         print "\t\t" + id + self.test_case_name + "\r\n"
