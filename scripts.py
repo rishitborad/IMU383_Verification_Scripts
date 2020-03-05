@@ -616,7 +616,7 @@ class Test_Environment:
 
     # Add test scetions & test scripts here
     def setup_tests(self):
-        '''
+
         section1 = Test_Section("UART Transaction Verification")
         self.test_sections.append(section1)
         section1.add_test_case(Code("Default Baudrate Test",   self.scripts.default_baudrate_test))
@@ -628,7 +628,7 @@ class Test_Environment:
         section1.add_test_case(Code("Polled Mode Test",        self.scripts.polled_mode_test))
         section1.add_test_case(Code("Continuous Mode Test",    self.scripts.continuouse_mode_test))
         section1.add_test_case(Code("Verify Packet Types",     self.scripts.verify_packet_types))
-        '''
+
         section2 = Test_Section("Read Field Default Checks")
         self.test_sections.append(section2)
         section2.add_test_case(Condition_Check("Packet Rate Divider Default",                 self.scripts.rf_default_test, packet_rate_div_f,              0x0001))
@@ -660,7 +660,7 @@ class Test_Environment:
         section3.add_test_case(Condition_Check("Fault Detection - Chip3 Default",             self.scripts.gf_default_test, fault_detct_chip3_f,            0xFFFF))
         section3.add_test_case(Condition_Check("Accel Consistency Check Enable Default",      self.scripts.gf_default_test, accel_consistency_en_f,         0x0001))
         section3.add_test_case(Condition_Check("Rate-Sensor Consistency Check Enable Default",self.scripts.gf_default_test, rate_sensor_consistency_en_f,   0x0001))
-        '''
+
         section4 = Test_Section("Packet Rate Divider Functional Test")
         self.test_sections.append(section4)
         section4.add_test_case(Condition_Check("Packet Rate Div 100Hz",  self.scripts.packet_rate_div, [0x00,0x01], 100))
@@ -764,12 +764,6 @@ class Test_Environment:
         self.test_sections.append(section11)
         section11.add_test_case(Code("Longterm packet read test", self.scripts.read_packets_S0))
         section11.add_test_case(Code("Longterm packet read test", self.scripts.read_packets_S1))
-        '''
-        '''
-        section11 = Test_Section("Write Field Tests")
-        self.test_sections.append(section11)
-        section11.add_test_case(Code("Temporary tests", self.scripts.temp))
-        '''
 
     def run_tests(self):
         for test in self.test_sections:
