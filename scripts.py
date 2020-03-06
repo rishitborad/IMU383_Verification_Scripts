@@ -577,7 +577,7 @@ class Test_Scripts:
         # use pt.decode("hex") to conver pt ro ASCII
 
         '''Execute'''
-        for each in range(1000):
+        for each in range(1000000):
 
             response = Test_Scripts.uut.read_response()
             #print "S0",response
@@ -597,7 +597,7 @@ class Test_Scripts:
         # use pt.decode("hex") to conver pt ro ASCII
 
         '''Execute'''
-        for each in range(1000):
+        for each in range(1000000):
             response = Test_Scripts.uut.read_response()
             #print "S1",response
             if response and response[0] == pt.decode("hex"):
