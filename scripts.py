@@ -620,7 +620,7 @@ class Test_Environment:
         section1 = Test_Section("UART Transaction Verification")
         self.test_sections.append(section1)
         section1.add_test_case(Code("Default Baudrate Test",   self.scripts.default_baudrate_test))
-        section1.add_test_case(Code("Comminication Test",      self.scripts.communication_test))
+        section1.add_test_case(Code("Communication Test",      self.scripts.communication_test))
         section1.add_test_case(Code("Header Test",             self.scripts.header_test))
         section1.add_test_case(Code("Payload Length Test",     self.scripts.payload_length_test))
         section1.add_test_case(Code("Payload Test",            self.scripts.payload_test))
@@ -767,7 +767,7 @@ class Test_Environment:
 
     def run_tests(self):
         for test in self.test_sections:
-            test.run()
+            test.run_test_section()
 
     def print_results(self):
         print "\tTest Results::"

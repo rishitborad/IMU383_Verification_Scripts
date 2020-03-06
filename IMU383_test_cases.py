@@ -14,14 +14,14 @@ class Test_Section:
         self.total_test_cases += 1
         test_case.test_id = self.total_test_cases
 
-    def run(self):
+    def run_test_section(self):
         print "\t" + str(self.section_id) + ". " + self.section_name + "\r\n"
         counter = 0
         for test in self.test_cases:
             #self.result = test.run()
             counter = counter + 1
             id = str(self.section_id) + "." + str(counter) + ". "
-            test.run(id)
+            test.run_test_case(id)
 
 #############################################
 
@@ -35,7 +35,7 @@ class Test_Case:
         self.param = param
         self.test_id = 0
 
-    def run(self, id):
+    def run_test_case(self, id):
         raise NotImplementedError("Subclass must implement abstract method")
         #print "\t\t" + self.test_case_name + "\r\n"
         #if(self.handle != None):
@@ -45,7 +45,7 @@ class Test_Case:
 
 class Condition_Check(Test_Case):
 
-    def run(self, id):
+    def run_test_case(self, id):
         print "\t\t" + id + self.test_case_name + "\r\n"
         if(self.handle != None):
             self.result = self.handle(self.cmd, self.param)
@@ -56,7 +56,7 @@ class Condition_Check(Test_Case):
 
 class Code(Test_Case):
 
-    def run(self, id):
+    def run_test_case(self, id):
         print "\t\t" + id + self.test_case_name + "\r\n"
         if(self.handle != None):
             self.result = self.handle()
