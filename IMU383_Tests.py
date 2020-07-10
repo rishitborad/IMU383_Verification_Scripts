@@ -220,11 +220,9 @@ class Test_Scripts:
         '''Setup'''
         # Set S0 as continuous packet type
         data = Test_Scripts.uut.imu383_command("SF", continuous_packet_type_f + S0)
+        test_time = 1
 
-        test_time = 20
-        field = packet_rate_div_f      # Packet Rate Div Field Address
-
-        resp = Test_Scripts.uut.imu383_command("SF", field + rate)
+        resp = Test_Scripts.uut.imu383_command("SF", packet_rate_div_f + rate)
 
         if not resp:
             #print "ERORR: Dint receive data"
@@ -232,13 +230,13 @@ class Test_Scripts:
         #print data
 
         '''Execute'''
-        t0 = time.time()
         count = 0
+        t0 = time.time()
         while(time.time() - t0 < test_time):
             response = Test_Scripts.uut.read_response()
             # Count up when S0 packet recceived
             if response and response[0] == "S0":
-                #print response
+                #print time.time()
                 count = count+1
 
         Test_Scripts.uut.silence_device()
@@ -274,7 +272,7 @@ class Test_Scripts:
         # use pt.decode("hex") to conver pt ro ASCII
 
         '''Execute'''
-        for each in range(10):
+        for each in range(100):
             response = Test_Scripts.uut.read_response()
             #print "S0",response
             if response and response[0] == pt.decode("hex"):
@@ -625,7 +623,7 @@ class Test_Environment:
 
     # Add test scetions & test scripts here
     def setup_tests(self):
-        
+        '''
         section1 = Test_Section("UART Transaction Verification")
         self.test_sections.append(section1)
         section1.add_test_case(Code("Default Baudrate Test",   self.scripts.default_baudrate_test))
@@ -677,10 +675,12 @@ class Test_Environment:
         section3.add_test_case(Condition_Check("Fault Detection - Chip3 Default",             self.scripts.gf_default_test, fault_detct_chip3_f,            0xFFFF))
         section3.add_test_case(Condition_Check("Accel Consistency Check Enable Default",      self.scripts.gf_default_test, accel_consistency_en_f,         0x0001))
         section3.add_test_case(Condition_Check("Rate-Sensor Consistency Check Enable Default",self.scripts.gf_default_test, rate_sensor_consistency_en_f,   0x0001))
-
+        '''
         section4 = Test_Section("Packet Rate Divider Functional Test")
         self.test_sections.append(section4)
+        section4.add_test_case(Condition_Check("Packet Rate Div 200Hz",  self.scripts.packet_rate_div, [0x00,0xC8], 200))
         section4.add_test_case(Condition_Check("Packet Rate Div 100Hz",  self.scripts.packet_rate_div, [0x00,0x01], 100))
+        '''
         section4.add_test_case(Condition_Check("Packet Rate Div 50Hz",   self.scripts.packet_rate_div, [0x00,0x02], 50))
         section4.add_test_case(Condition_Check("Packet Rate Div 25Hz",   self.scripts.packet_rate_div, [0x00,0x04], 25))
         section4.add_test_case(Condition_Check("Packet Rate Div 20Hz",   self.scripts.packet_rate_div, [0x00,0x05], 20))
@@ -689,12 +689,12 @@ class Test_Environment:
         section4.add_test_case(Condition_Check("Packet Rate Div 4Hz",    self.scripts.packet_rate_div, [0x00,0x19], 4))
         section4.add_test_case(Condition_Check("Packet Rate Div 2Hz",    self.scripts.packet_rate_div, [0x00,0x32], 2))
         section4.add_test_case(Condition_Check("Packet Rate Div Quiet",  self.scripts.packet_rate_div, [0x00,0x00], 0))
-
+        '''
         section5 = Test_Section("Continuous Packet Type Functional Test")
         self.test_sections.append(section5)
         section5.add_test_case(Code("Continuous Packet Type S0 Functional Test",  self.scripts.continuous_packet_type_S0))
         section5.add_test_case(Code("Continuous Packet Type S1 Functional Test",  self.scripts.continuous_packet_type_S1))
-
+        '''
         section6 = Test_Section("Orientation Functional Test")
         self.test_sections.append(section6)
         section6.add_test_case(Condition_Check("Orientation Functional Test 0x0000",        self.scripts.orientation, [0x00, 0x00]))
@@ -780,9 +780,9 @@ class Test_Environment:
 
         section11 = Test_Section("Longterm Packet Test")
         self.test_sections.append(section11)
-        #section11.add_test_case(Code("Longterm packet read test", self.scripts.read_packets_S0))
-        #section11.add_test_case(Code("Longterm packet read test", self.scripts.read_packets_S1))
-
+        section11.add_test_case(Code("Longterm packet read test", self.scripts.read_packets_S0))
+        section11.add_test_case(Code("Longterm packet read test", self.scripts.read_packets_S1))
+        '''
 
     def run_tests(self):
         for test in self.test_sections:
@@ -794,13 +794,8 @@ class Test_Environment:
             print "\t\tSection " + str(section.section_id) + ": " + section.section_name + "\r\n"
             for test in section.test_cases:
                 id = str(section.section_id) + "." + str(test.test_id)
-                result_str = "\t\t\tPassed --> " if test.result else "\t\t\tFailed --x "
+                result_str = "\t\t\tPassed --> " if test.result['status'] else "\t\t\tFailed --x "
                 print result_str + id + " " + test.test_case_name + "\r\n"
-
-    def _create_csv(self, file_name, fieldnames):
-        with open(file_name, 'w+') as out_file:
-            writer = csv.DictWriter(out_file, fieldnames = fieldnames)
-            writer.writeheader()
 
     def log_results(self, file_name):
         logger = TestLogger(file_name)
