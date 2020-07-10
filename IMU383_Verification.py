@@ -1,8 +1,8 @@
 from IMU383_Uart import UART_Dev
-from IMU383_test_cases import Test_Section
-from IMU383_test_cases import Test_Case
-from scripts import Test_Scripts
-from scripts import Test_Environment
+from Test_Case import Test_Section
+from Test_Case import Test_Case
+from IMU383_Tests import Test_Scripts
+from IMU383_Tests import Test_Environment
 #import scripts
 
 def ping_message_test():
@@ -16,7 +16,7 @@ def continuous_packet_type_test():
 
 if __name__ == "__main__":
 
-    uut = UART_Dev("/dev/tty.usbserial-143200", 115200 )
+    uut = UART_Dev("/dev/tty.usbserial-144400", 115200 )
     print("\r\n \t#######   IMU383 UART Interface Verification V1.0   #######\r\n")
     serial_number, model = uut.get_serial_number()
     version = uut.get_version()

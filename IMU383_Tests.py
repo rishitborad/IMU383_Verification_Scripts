@@ -1,6 +1,8 @@
 import time
 import struct
+import io
 from IMU383_Uart import UART_Dev
+from Test_Logger import TestLogger
 from IMU383_test_cases import Test_Section
 from IMU383_test_cases import Test_Case
 from IMU383_test_cases import Code
@@ -762,8 +764,8 @@ class Test_Environment:
 
         section11 = Test_Section("Longterm Packet Test")
         self.test_sections.append(section11)
-        section11.add_test_case(Code("Longterm packet read test", self.scripts.read_packets_S0))
-        section11.add_test_case(Code("Longterm packet read test", self.scripts.read_packets_S1))
+        #section11.add_test_case(Code("Longterm packet read test", self.scripts.read_packets_S0))
+        #section11.add_test_case(Code("Longterm packet read test", self.scripts.read_packets_S1))
 
     def run_tests(self):
         for test in self.test_sections:

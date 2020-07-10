@@ -63,6 +63,13 @@ class UART_Dev:
             payload = str_list[2]
             return packet_type, payload_length, payload
 
+    # appends Header and Calculates CRC on data
+    # data should have packet_type + payload_len + payload
+    def _send_message(self, data):
+        self.UUT.write(self._create_packet(data))
+
+    ############## Public Methods ###############
+
     # Reads raw data from the UUT
     # Returns list of strings [Packet_type, Payload_length, payload]
     # Returns empty list in case of timeout
@@ -96,11 +103,6 @@ class UART_Dev:
                 if(retry > 100):
                     print "Error: Couldnt find header"
                     return str_list
-
-    # appends Header and Calculates CRC on data
-    # data should have packet_type + payload_len + payload
-    def send_message(self, data):
-        self.UUT.write(self._create_packet(data))
 
     # Message type = 2 byte packet types
     # Message = raw data, this methods formats it to IMU383 requirement, adds CRC and header, message length and number of fields.
@@ -151,17 +153,18 @@ class UART_Dev:
     # set packet rate = Quiet
     def silence_device(self):
         retry = 0
-        self.send_message([0x53,0x46,0x05,0x01,0x00,0x01,0x00,0x00])
+        self._send_message([0x53,0x46,0x05,0x01,0x00,0x01,0x00,0x00])
         response = self.read_response()
-
-        while(True):
-            response = self.read_response()
-            if not response:
-                break
+        #print "silence dev resp:", response
+        time.sleep(2)
+        # Retrive any unread bytes in buffer
+        nbytes = self.UUT.inWaiting()
+        if nbytes > 0:
+            indata = self.UUT.read(nbytes)
 
     # returns true if ping was successful
     def ping_device(self):
-        self.send_message(ping)
+        self._send_message(ping)
         pt,pll,pl = self._unpacked_response()
         if(pt == "PK"):
             return True
@@ -169,7 +172,7 @@ class UART_Dev:
             return False
 
     def restart_device(self):
-        self.send_message([0x53,0x52,0x00])
+        self._send_message([0x53,0x52,0x00])
         response = self.read_response()
         while(response[0] != "SR"):
             response = self.read_response()
