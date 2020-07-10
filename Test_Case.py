@@ -30,10 +30,43 @@ class Test_Case:
     def __init__(self, case_name, handle = None, cmd = None, param = None):
         self.test_case_name = case_name
         self.handle = handle
-        self.result = False
+        self.result = []
         self.cmd = cmd
         self.param = param
         self.test_id = 0
+
+    def _prepare_result(self, response):
+        expected_res = ''
+        actual_res = ''
+
+        if type(response[1]) is int:
+            actual_res = str(response[1])
+        elif type(response[1]) is list:
+            for i in response[1]:
+                if type(i) is int:
+                    actual_res += str(i)
+                else:
+                    actual_res += i
+        else:
+            actual_res = response[1]
+
+        if type(response[2]) is int:
+            expected_res = str(response[2])
+        elif type(response[2]) is list:
+            for i in response[2]:
+                if type(i) is int:
+                    expected_res += str(i) + ", "
+                else:
+                    expected_res += i + ", "
+        else:
+            expected_res = response[2]
+
+        self.result = { 'id': self.test_id,
+                        'test_name': self.test_case_name,
+                        'expected': expected_res,
+                        'actual': actual_res,
+                        'status': response[0]}
+        #print self.result['id'],self.result['test_name'],self.result['expected'],self.result['actual'],self.result['status']
 
     def run_test_case(self, id):
         raise NotImplementedError("Subclass must implement abstract method")
@@ -46,10 +79,17 @@ class Test_Case:
 class Condition_Check(Test_Case):
 
     def run_test_case(self, id):
+        self.test_id = id
+
         print "\t\t" + id + self.test_case_name + "\r\n"
+
         if(self.handle != None):
-            self.result = self.handle(self.cmd, self.param)
-            result_str = "Passed" if self.result else "Failed" + "\t\t" + id + self.test_case_name + "\r\n"
+            response = self.handle(self.cmd, self.param)
+            self._prepare_result(response)
+
+            test_outcome = "\t\t" + id + self.test_case_name + "Expected: "+ self.result['expected'] + " Actual: "+  self.result['actual']  + "\r\n"
+
+            result_str = "Passed" + test_outcome if response[0] else "Failed" +  test_outcome
             #print result_str
 
 #===========================================#
@@ -57,8 +97,15 @@ class Condition_Check(Test_Case):
 class Code(Test_Case):
 
     def run_test_case(self, id):
+        self.test_id = id
+
         print "\t\t" + id + self.test_case_name + "\r\n"
+
         if(self.handle != None):
-            self.result = self.handle()
-            result_str = "Passed" if self.result else "Failed" + "\t\t" + id + self.test_case_name + "\r\n"
+            response = self.handle()
+            self._prepare_result(response)
+
+            test_outcome = "\t\t" + id + self.test_case_name + "Expected: "+ self.result['expected'] + " Actual: "+  self.result['actual']  + "\r\n"
+
+            result_str = "Passed" + test_outcome if response[0] else "Failed" +  test_outcome
             #print result_str

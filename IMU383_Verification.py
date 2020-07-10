@@ -34,3 +34,6 @@ if __name__ == "__main__":
     env.run_tests()
     print "\r\n \t##########  Results   #####################################\r\n"
     env.print_results()
+
+    file_name = 'test_results_' + str(serial_number) + '_' + str(version) + '.csv'
+    env.log_results(file_name)

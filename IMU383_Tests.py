@@ -3,10 +3,10 @@ import struct
 import io
 from IMU383_Uart import UART_Dev
 from Test_Logger import TestLogger
-from IMU383_test_cases import Test_Section
-from IMU383_test_cases import Test_Case
-from IMU383_test_cases import Code
-from IMU383_test_cases import Condition_Check
+from Test_Case import Test_Section
+from Test_Case import Test_Case
+from Test_Case import Code
+from Test_Case import Condition_Check
 from math import pi
 
 
@@ -81,9 +81,9 @@ class Test_Scripts:
         #pt,pll,pl = Test_Scripts.uut.unpacked_response()
         response = Test_Scripts.uut.imu383_command("CH",[0x41])
         if(int(response,16) == 0x41):
-            return True
+            return True, int(response,16), 0x41
         else:
-            return False
+            return False, int(response,16), 0x41
 
     def default_baudrate_test(self):
         return self.echo_test()
@@ -101,14 +101,14 @@ class Test_Scripts:
         return self.echo_test()
 
     def CRC_test(self):
-        return self.echo_test
+        return self.echo_test()
 
     def polled_mode_test(self):
         response = Test_Scripts.uut.imu383_command("GP", S0)
         if(response[0] == 'S0'):
-            return True
+            return True, response[0], 'S0'
         else:
-            return False
+            return False, response[0], 'S0'
 
     def continuouse_mode_test(self):
         data = Test_Scripts.uut.imu383_command("SF", continuous_packet_type_f + S0)
@@ -123,9 +123,9 @@ class Test_Scripts:
         # verify that UUT reads data 20 times in 10 seconds,
         # more ofthen than not it reads 21 times due to time it takes to read
         if(count == 20 or count == 21):
-            return True
+            return True, count, [20,21]
         else:
-            return False
+            return False, count, [20,21]
 
     def packet_type_test(self, packet_type):
 
@@ -133,30 +133,30 @@ class Test_Scripts:
 
         response = Test_Scripts.uut.imu383_command("GP", packet_type)
         if(response[0] == ptype.decode("hex")):
-            return True
+            return True, response[0], ptype.decode("hex")
         else:
-            return False
+            return False, response[0], ptype.decode("hex")
 
     def get_field_test(self, field):
         response = Test_Scripts.uut.imu383_command("GF", field)
         if not response:
-            return False
+            return False, response, 'response'
         else:
-            return True
+            return True, response, 'response'
 
     def read_field_test(self, field):
         response = Test_Scripts.uut.imu383_command("RF", field)
         if not response:
-            return False
+            return False, response, 'response'
         else:
-            return True
+            return True, response, 'response'
 
     def set_field_test(self, field ,val):
         response = Test_Scripts.uut.imu383_command("SF", field + val)
         if not response:
-            return False
+            return False, response, 'response'
         else:
-            return True
+            return True, response, 'response'
 
     def write_field_test(self, field, val):
         data = Test_Scripts.uut.imu383_command("RF", field)
@@ -172,49 +172,46 @@ class Test_Scripts:
         Test_Scripts.uut.imu383_command("WF", orig_field_val)
 
         if not response:
-            return False
+            return False, response, 'response'
         else:
-            return True
+            return True, response, 'response'
 
-    def verify_packet_types(self):
-        Test_Scripts.uut.silence_device()
-        ping_test = Test_Scripts.uut.ping_device()
-        echo_test = self.echo_test()
-        get_packet_test = self.polled_mode_test()
-        id = self.packet_type_test(ID)
-        vr = self.packet_type_test(VR)
-        t0 = self.packet_type_test(T0)
-        s0 = self.packet_type_test(S0)
-        s1 = self.packet_type_test(S1)
-        rf = self.read_field_test(packet_rate_div_f)
-        wf = self.write_field_test(packet_rate_div_f, [0x00, 0x00])
-        gf = self.get_field_test(packet_rate_div_f)
-        sf = self.set_field_test(packet_rate_div_f, [0x00, 0x00])
+    def verify_ID_packet_type(self):
+        return self.packet_type_test(ID)
+    def verify_VR_packet_type(self):
+        return self.packet_type_test(VR)
+    def verify_T0_packet_type(self):
+        return self.packet_type_test(T0)
+    def verify_S0_packet_type(self):
+        return self.packet_type_test(S0)
+    def verify_S1_packet_type(self):
+        return self.packet_type_test(S1)
+    def verify_RF_packet_type(self):
+        return self.read_field_test(packet_rate_div_f)
+    def verify_WF_packet_type(self):
+        return self.write_field_test(packet_rate_div_f, [0x00, 0x00])
+    def verify_GF_packet_type(self):
+        return self.get_field_test(packet_rate_div_f)
+    def verify_SF_packet_type(self):
+        return self.set_field_test(packet_rate_div_f, [0x00, 0x00])
 
-        return ping_test and echo_test and get_packet_test and id and vr    \
-                and t0 and s0 and s1 and gf and rf and wf and sf
-
-    def rf_default_test(self, cmd, param):
+    def rf_default_test(self, cmd, expected_val):
         response = Test_Scripts.uut.imu383_command("RF", cmd)
 
-        if(int(response[6:],16) == param):
-            return True
+        if(int(response[6:],16) == expected_val):
+            return True, int(response[6:],16), expected_val
         else:
-            print "actual ", int(response[6:],16)
-            print "expected ", param
-            return False
+            return False, int(response[6:],16), expected_val
 
-    def gf_default_test(self, cmd, param):
-
+    def gf_default_test(self, field, expected_val):
         Test_Scripts.uut.restart_device();
-        response = Test_Scripts.uut.imu383_command("GF", cmd)
-
-        if(int(response[6:],16) == param):
-            return True
+        Test_Scripts.uut.silence_device();
+        response = Test_Scripts.uut.imu383_command("GF", field)
+        #print response
+        if(int(response[6:],16) == expected_val):
+            return True, int(response[6:],16), expected_val
         else:
-            print "actual ", int(response[6:],16)
-            print "expected ", param
-            return False
+            return False, int(response[6:],16), expected_val
 
     # rate_val is packet_rate_value in list, eg:[0x00, 0x05]
     # rateHz is rate at which packets are expected
@@ -230,8 +227,8 @@ class Test_Scripts:
         resp = Test_Scripts.uut.imu383_command("SF", field + rate)
 
         if not resp:
-            print "ERORR: Dint receive data"
-            return False
+            #print "ERORR: Dint receive data"
+            return False, "Response", "No Response"
         #print data
 
         '''Execute'''
@@ -248,11 +245,12 @@ class Test_Scripts:
 
         '''Result'''
         if(rateHz == 0):
-            return True if(count == 0) else False
-        elif(((rateHz * test_time - 1) < count) or (count < (rateHz * test_time + 1))):
-            return True
+            return True, count, 0 if(count == 0) else False, count , 0
+        elif(((rateHz * test_time - 1) <= count) and (count <= (rateHz * test_time + 1))):
+            return True, count , [(rateHz * test_time - 1), (rateHz * test_time + 1)]
         else:
-            return False
+            return False, count , [(rateHz * test_time - 1), (rateHz * test_time + 1)]
+
 
     def _combine_reg_short(self,lsb,msb):
             lsb = struct.pack('B',lsb)
@@ -295,9 +293,8 @@ class Test_Scripts:
                 board_temp = self._combine_reg_short(msg[24],msg[25]) * (200.0/65536)
                 timer = self._combine_reg_ushort(msg[26],msg[27]) * 15.259022
                 BIT = self._combine_reg_ushort(msg[28],msg[29])
-                '''Result'''
-                #print board_temp
 
+                '''Result'''
                 # check data is within expected range
                 if( not (lower_limit_accel < x_accel and x_accel < upper_limit_accel) and\
                     (lower_limit_accel < y_accel and y_accel < upper_limit_accel) and\
@@ -306,9 +303,13 @@ class Test_Scripts:
                     (lower_limit_accel < y_accel and y_accel < upper_limit_accel) and\
                     (lower_limit_accel < z_accel and z_accel < upper_limit_accel)    \
                    ) :
-                   return False
-
-        return True
+                   Test_Scripts.uut.silence_device()
+                   return False, 'Not within limits', 'Within limit'
+            else:
+                Test_Scripts.uut.silence_device()
+                return False, response, 'response'
+        Test_Scripts.uut.silence_device()
+        return True, 'Within limits', 'Within limits'
 
     def continuous_packet_type_S1(self):
         '''Setup'''
@@ -341,8 +342,8 @@ class Test_Scripts:
                 board_temp = self._combine_reg_short(msg[18],msg[19]) * (200.0/65536)
                 timer = self._combine_reg_ushort(msg[20],msg[21]) * 15.259022
                 BIT = self._combine_reg_ushort(msg[22],msg[23])
-                '''Result'''
 
+                '''Result'''
                 if( not (lower_limit_accel < x_accel and x_accel < upper_limit_accel) and\
                     (lower_limit_accel < y_accel and y_accel < upper_limit_accel) and\
                     (lower_limit_accel < z_accel and z_accel < upper_limit_accel) and\
@@ -350,9 +351,13 @@ class Test_Scripts:
                     (lower_limit_accel < y_accel and y_accel < upper_limit_accel) and\
                     (lower_limit_accel < z_accel and z_accel < upper_limit_accel)    \
                    ) :
-                   return False
-
-        return True
+                   Test_Scripts.uut.silence_device()
+                   return False, 'Not within limits', 'Within limit'
+            else:
+                Test_Scripts.uut.silence_device()
+                return False, response, 'response'
+        Test_Scripts.uut.silence_device()
+        return True, 'Within limits', 'Within limits'
 
     def orientation(self, config, void):
         '''Setup'''
@@ -365,23 +370,25 @@ class Test_Scripts:
 
         '''Result'''
         if(int(data[6:], 16) == int(orientation_config, 16)):
-            return True
+            return True, int(data[6:], 16), int(orientation_config, 16)
         else:
-            return False
+            return False, int(data[6:], 16), int(orientation_config, 16)
 
     def check_bad_commands(self, field, val):
-
         '''Setup'''
         Test_Scripts.uut.silence_device()
         nak = ''.join(hex(val)[2:] for val in NAK)
 
         '''Execute'''
         data = Test_Scripts.uut.imu383_command("SF", field + val)
-        if( data[0].encode("hex") == nak):
-            return True
+        if (type(data) != list):
+            return False, 'Command Worked', "Negative Response"
+
+        if( int(data[0].encode("hex"),16) == int(nak,16)):
+            return True, int(data[0].encode("hex"),16), int(nak,16)
         else:
-            data = Test_Scripts.uut.imu383_command("GF", field)
-            return False
+            #data = Test_Scripts.uut.sensor_command("GF", field)
+            return False, int(data[0].encode("hex"),16), int(nak,16)
 
 
     def read_only_test(self, field, val):
@@ -395,21 +402,9 @@ class Test_Scripts:
 
         '''Result'''
         if(actual == expected):
-
-            return False
+            return False, actual, expected
         else:
-            return True
-
-    def fault_detection_field_test(self, field, val):
-        '''Setup'''
-        data = Test_Scripts.uut.imu383_command("SF", field + val)
-        data = Test_Scripts.uut.imu383_command("GF", field)
-
-        '''Execute'''
-
-        '''Result'''
-
-        return False
+            return True, actual, expected
 
     def print_default_eprom(self):
         data = Test_Scripts.uut.imu383_command("RF", [0x00,0x01])
@@ -444,9 +439,9 @@ class Test_Scripts:
         '''Result'''
 
         if(int(data[-4:],16) == int(''.join(hex(i)[2:] for i in val),16)):
-            return True
+            return True, int(data[-4:],16), int(''.join(hex(i)[2:] for i in val),16)
         else:
-            return False
+            return False, int(data[-4:],16), int(''.join(hex(i)[2:] for i in val),16)
 
     def _get_packet_rate(self, packet_type):
         # Convert from Hex list to ASCII
@@ -502,7 +497,7 @@ class Test_Scripts:
         # packet rate souldn't change
         uut_packet_rate = self._get_packet_rate(S1)
         if(uut_packet_rate != 0):
-            return False        # packet rate changed when it shouldn't
+            return False, uut_packet_rate, 0        # packet rate changed when it shouldn't
         else:
             # restart the device if the rate hasn't changed
             Test_Scripts.uut.restart_device()
@@ -517,9 +512,9 @@ class Test_Scripts:
 
         # Verify that Packet rate is as expected after power cycle
         if(actual_rate_hz == expected_rate_hz):
-            return True
+            return True, actual_rate_hz, expected_rate_hz
         else:
-            return False
+            return False, actual_rate_hz, expected_rate_hz
 
     def set_field_retention_test(self, field, val):
         '''Setup'''
@@ -541,9 +536,9 @@ class Test_Scripts:
         # verify that GF value doesnt retain after power cycle and matches with EEPROM default value
 
         if(int(data[-4:],16) == orig_field_val):
-            return True
+            return True, int(data[-4:],16), orig_field_val
         else:
-            return False
+            return False, int(data[-4:],16), orig_field_val
 
     def set_field_effective_test_rate_f(self):
         field = continuous_packet_type_f
@@ -559,16 +554,16 @@ class Test_Scripts:
         ptype = ''.join(hex(val)[2:] for val in S0)
 
         if(packet[0] != ptype.decode("hex")):
-            return False
+            return False, packet[0], ptype.decode("hex")
 
         Test_Scripts.uut.restart_device()
         data = Test_Scripts.uut.imu383_command("SF", packet_rate_div_f + [0x00,0x01])
         packet = Test_Scripts.uut.read_response();
         #print packet
         if(packet[0] != orig_field_val.decode("hex")):
-            return False
+            return False, packet[0], orig_field_val.decode("hex")
 
-        return True
+        return True, packet[0], orig_field_val.decode("hex")
 
     def read_packets_S0(self):
         data = Test_Scripts.uut.imu383_command("SF", continuous_packet_type_f + S0)
@@ -580,14 +575,20 @@ class Test_Scripts:
 
         '''Execute'''
         for each in range(1000000):
-
             response = Test_Scripts.uut.read_response()
             #print "S0",response
-            if response and response[0] == pt.decode("hex"):
+
+            if not response:
+                return False, 'No response', 'Non zero packets'
+
+            if response[0] == pt.decode("hex"):
                 if(int(response[2],16) == 0):
-                    print response[2]
-                    return False
-        return True
+                    #print response[2]
+                    return False, response[2], 'Non zero packets'
+            else:
+                return False, response[2], 'Non zero packets'
+
+        return True, 'Non zero packets', 'Non zero packets'
 
 
     def read_packets_S1(self):
@@ -602,11 +603,17 @@ class Test_Scripts:
         for each in range(1000000):
             response = Test_Scripts.uut.read_response()
             #print "S1",response
-            if response and response[0] == pt.decode("hex"):
+            if not response:
+                return False, 'No response', 'Non zero packets'
+
+            if response[0] == pt.decode("hex"):
                 if(int(response[2],16) == 0):
-                    print response[2]
-                    return False
-        return True
+                    #print response[2]
+                    return False, response[2], 'Non zero packets'
+            else:
+                return False, response[2], 'Non zero packets'
+
+        return True, 'Non zero packets', 'Non zero packets'
 
 #################################################
 
@@ -618,7 +625,7 @@ class Test_Environment:
 
     # Add test scetions & test scripts here
     def setup_tests(self):
-
+        
         section1 = Test_Section("UART Transaction Verification")
         self.test_sections.append(section1)
         section1.add_test_case(Code("Default Baudrate Test",   self.scripts.default_baudrate_test))
@@ -629,7 +636,15 @@ class Test_Environment:
         section1.add_test_case(Code("CRC Test",                self.scripts.CRC_test))
         section1.add_test_case(Code("Polled Mode Test",        self.scripts.polled_mode_test))
         section1.add_test_case(Code("Continuous Mode Test",    self.scripts.continuouse_mode_test))
-        section1.add_test_case(Code("Verify Packet Types",     self.scripts.verify_packet_types))
+        section1.add_test_case(Code("Verify ID Packet Types",     self.scripts.verify_ID_packet_type))
+        section1.add_test_case(Code("Verify VR Packet Types",     self.scripts.verify_VR_packet_type))
+        section1.add_test_case(Code("Verify T0 Packet Types",     self.scripts.verify_T0_packet_type))
+        section1.add_test_case(Code("Verify S0 Packet Types",     self.scripts.verify_S0_packet_type))
+        section1.add_test_case(Code("Verify S1 Packet Types",     self.scripts.verify_S1_packet_type))
+        section1.add_test_case(Code("Verify RF Packet Types",     self.scripts.verify_RF_packet_type))
+        section1.add_test_case(Code("Verify WF Packet Types",     self.scripts.verify_WF_packet_type))
+        section1.add_test_case(Code("Verify GF Packet Types",     self.scripts.verify_GF_packet_type))
+        section1.add_test_case(Code("Verify SF Packet Types",     self.scripts.verify_SF_packet_type))
 
         section2 = Test_Section("Read Field Default Checks")
         self.test_sections.append(section2)
@@ -685,6 +700,7 @@ class Test_Environment:
         section6.add_test_case(Condition_Check("Orientation Functional Test 0x0000",        self.scripts.orientation, [0x00, 0x00]))
         section6.add_test_case(Condition_Check("Orientation Functional Test 0x0009",        self.scripts.orientation, [0x00, 0x09]))
         section6.add_test_case(Condition_Check("Orientation Functional Test 0x0023",        self.scripts.orientation, [0x00, 0x23]))
+
         section6.add_test_case(Condition_Check("Orientation Functional Test 0x002A",        self.scripts.orientation, [0x00, 0x2A]))
         section6.add_test_case(Condition_Check("Orientation Functional Test 0x0041",        self.scripts.orientation, [0x00, 0x41]))
         section6.add_test_case(Condition_Check("Orientation Functional Test 0x0048",        self.scripts.orientation, [0x00, 0x48]))
@@ -767,6 +783,7 @@ class Test_Environment:
         #section11.add_test_case(Code("Longterm packet read test", self.scripts.read_packets_S0))
         #section11.add_test_case(Code("Longterm packet read test", self.scripts.read_packets_S1))
 
+
     def run_tests(self):
         for test in self.test_sections:
             test.run_test_section()
@@ -779,3 +796,17 @@ class Test_Environment:
                 id = str(section.section_id) + "." + str(test.test_id)
                 result_str = "\t\t\tPassed --> " if test.result else "\t\t\tFailed --x "
                 print result_str + id + " " + test.test_case_name + "\r\n"
+
+    def _create_csv(self, file_name, fieldnames):
+        with open(file_name, 'w+') as out_file:
+            writer = csv.DictWriter(out_file, fieldnames = fieldnames)
+            writer.writeheader()
+
+    def log_results(self, file_name):
+        logger = TestLogger(file_name)
+        field_names = ['id', 'test_name', 'expected', 'actual', 'status']
+        logger.create(field_names)
+        for section in self.test_sections:
+            for test in section.test_cases:
+                #print test.result['id'],test.result['test_name'],test.result['expected'],test.result['actual']
+                logger.write_log(test.result)
