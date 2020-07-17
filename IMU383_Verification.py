@@ -16,7 +16,7 @@ def continuous_packet_type_test():
 
 if __name__ == "__main__":
 
-    uut = UART_Dev("/dev/tty.usbserial-142400", 115200 )
+    uut = UART_Dev("/dev/tty.usbserial-141300", 115200 )
     print("\r\n \t#######   IMU383 UART Interface Verification V1.1   #######\r\n")
     serial_number, model = uut.get_serial_number()
     version = uut.get_version()

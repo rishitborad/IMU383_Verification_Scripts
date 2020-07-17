@@ -262,8 +262,6 @@ class Test_Scripts:
 
     def continuous_packet_type_S0(self):
         '''Setup'''
-        passed = True
-
         data = Test_Scripts.uut.imu383_command("SF", continuous_packet_type_f + S0)
         data = Test_Scripts.uut.imu383_command("SF", packet_rate_div_f + [0x00,0x01])
 
@@ -311,8 +309,6 @@ class Test_Scripts:
 
     def continuous_packet_type_S1(self):
         '''Setup'''
-        passed = True
-
         data = Test_Scripts.uut.imu383_command("SF", continuous_packet_type_f + S1)
         data = Test_Scripts.uut.imu383_command("SF", packet_rate_div_f + [0x00,0x01])
 
@@ -613,6 +609,105 @@ class Test_Scripts:
 
         return True, 'Non zero packets', 'Non zero packets'
 
+
+    def _get_s0_sampling_count(self):
+        # convert list of hex value to string
+        pt = ''.join(hex(val)[2:] for val in S0)
+
+        response = Test_Scripts.uut.read_response()
+
+        if response and response[0] == pt.decode("hex"):
+            len = int(response[1],16)
+            msg = bytearray.fromhex(response[2])
+            return self._combine_reg_ushort(msg[26],msg[27])
+        return -1
+
+    def s0_sampling_counter_test(self, rate_val, rate_hz):
+        max_counter = 65536
+        interval = max_counter/rate_hz
+        print interval
+        once = True;
+
+        data = Test_Scripts.uut.imu383_command("SF", continuous_packet_type_f + S0)
+        data = Test_Scripts.uut.imu383_command("SF", packet_rate_div_f + rate_val)
+
+        # convert list of hex value to string
+        pt = ''.join(hex(val)[2:] for val in S0)
+        # use pt.decode("hex") to conver pt ro ASCII
+
+        '''Execute'''
+        for each in range(10):
+            curr_count = self._get_s0_sampling_count()
+
+            # Set prev count
+            if(once):
+                once = False
+                prev_count = curr_count
+            else:
+                # Fail case
+                if(prev_count > curr_count):
+                    diff = (65535 - prev_count) + curr_count;
+                else:
+                    diff = curr_count - prev_count
+                print prev_count, curr_count, diff
+                if(diff != interval and diff != interval + 1):
+                    Test_Scripts.uut.silence_device()
+                    return False, diff, interval
+                # pass case
+                prev_count = curr_count
+
+        Test_Scripts.uut.silence_device()
+        return True, diff, interval
+
+    def _get_s1_sampling_count(self):
+        # convert list of hex value to string
+        pt = ''.join(hex(val)[2:] for val in S1)
+
+        response = Test_Scripts.uut.read_response()
+
+        if response and response[0] == pt.decode("hex"):
+            len = int(response[1],16)
+            msg = bytearray.fromhex(response[2])
+            return self._combine_reg_ushort(msg[20],msg[21])
+        return -1
+
+    def s1_sampling_counter_test(self, rate_val, rate_hz):
+        max_counter = 65536
+        interval = max_counter/rate_hz
+        print interval
+        once = True;
+
+        data = Test_Scripts.uut.imu383_command("SF", continuous_packet_type_f + S1)
+        data = Test_Scripts.uut.imu383_command("SF", packet_rate_div_f + rate_val)
+
+        # convert list of hex value to string
+        pt = ''.join(hex(val)[2:] for val in S1)
+        # use pt.decode("hex") to conver pt ro ASCII
+
+        '''Execute'''
+        for each in range(10):
+            curr_count = self._get_s1_sampling_count()
+
+            # Set prev count
+            if(once):
+                once = False
+                prev_count = curr_count
+            else:
+                # Fail case
+                if(prev_count > curr_count):
+                    diff = (65535 - prev_count) + curr_count;
+                else:
+                    diff = curr_count - prev_count
+                print prev_count, curr_count, diff
+                if(diff != interval and diff != interval + 1):
+                    Test_Scripts.uut.silence_device()
+                    return False, diff, interval
+                # pass case
+                prev_count = curr_count
+
+        Test_Scripts.uut.silence_device()
+        return True, diff, interval
+
 #################################################
 
 class Test_Environment:
@@ -675,12 +770,12 @@ class Test_Environment:
         section3.add_test_case(Condition_Check("Fault Detection - Chip3 Default",             self.scripts.gf_default_test, fault_detct_chip3_f,            0xFFFF))
         section3.add_test_case(Condition_Check("Accel Consistency Check Enable Default",      self.scripts.gf_default_test, accel_consistency_en_f,         0x0001))
         section3.add_test_case(Condition_Check("Rate-Sensor Consistency Check Enable Default",self.scripts.gf_default_test, rate_sensor_consistency_en_f,   0x0001))
-        '''
+
         section4 = Test_Section("Packet Rate Divider Functional Test")
         self.test_sections.append(section4)
         section4.add_test_case(Condition_Check("Packet Rate Div 200Hz",  self.scripts.packet_rate_div, [0x00,0xC8], 200))
         section4.add_test_case(Condition_Check("Packet Rate Div 100Hz",  self.scripts.packet_rate_div, [0x00,0x01], 100))
-        '''
+
         section4.add_test_case(Condition_Check("Packet Rate Div 50Hz",   self.scripts.packet_rate_div, [0x00,0x02], 50))
         section4.add_test_case(Condition_Check("Packet Rate Div 25Hz",   self.scripts.packet_rate_div, [0x00,0x04], 25))
         section4.add_test_case(Condition_Check("Packet Rate Div 20Hz",   self.scripts.packet_rate_div, [0x00,0x05], 20))
@@ -689,12 +784,12 @@ class Test_Environment:
         section4.add_test_case(Condition_Check("Packet Rate Div 4Hz",    self.scripts.packet_rate_div, [0x00,0x19], 4))
         section4.add_test_case(Condition_Check("Packet Rate Div 2Hz",    self.scripts.packet_rate_div, [0x00,0x32], 2))
         section4.add_test_case(Condition_Check("Packet Rate Div Quiet",  self.scripts.packet_rate_div, [0x00,0x00], 0))
-        '''
+
         section5 = Test_Section("Continuous Packet Type Functional Test")
         self.test_sections.append(section5)
         section5.add_test_case(Code("Continuous Packet Type S0 Functional Test",  self.scripts.continuous_packet_type_S0))
         section5.add_test_case(Code("Continuous Packet Type S1 Functional Test",  self.scripts.continuous_packet_type_S1))
-        '''
+
         section6 = Test_Section("Orientation Functional Test")
         self.test_sections.append(section6)
         section6.add_test_case(Condition_Check("Orientation Functional Test 0x0000",        self.scripts.orientation, [0x00, 0x00]))
@@ -777,11 +872,21 @@ class Test_Environment:
         section10.add_test_case(Condition_Check("Set Field Data Retention Test - Accel Consistency",     self.scripts.set_field_retention_test, accel_consistency_en_f,        [0x00, 0x32]))
         section10.add_test_case(Condition_Check("Set Field Data Retention Test - Rate Sens Consistency", self.scripts.set_field_retention_test, rate_sensor_consistency_en_f,  [0x00, 0x32]))
         section10.add_test_case(Code("set Field Data Effectiveness Tests", self.scripts.set_field_effective_test_rate_f))
-
+        '''
         section11 = Test_Section("Longterm Packet Test")
         self.test_sections.append(section11)
-        section11.add_test_case(Code("Longterm packet read test", self.scripts.read_packets_S0))
-        section11.add_test_case(Code("Longterm packet read test", self.scripts.read_packets_S1))
+        section11.add_test_case(Condition_Check("Sampling Counter Test - S0 Packet, 200Hz", self.scripts.s0_sampling_counter_test, [0x00,0xC8], 200))
+        section11.add_test_case(Condition_Check("Sampling Counter Test - S0 Packet, 100Hz", self.scripts.s0_sampling_counter_test, [0x00,0x01], 100))
+        section11.add_test_case(Condition_Check("Sampling Counter Test - S1 Packet, 200Hz", self.scripts.s1_sampling_counter_test, [0x00,0xC8], 200))
+        section11.add_test_case(Condition_Check("Sampling Counter Test - S1 Packet, 100Hz", self.scripts.s1_sampling_counter_test, [0x00,0x01], 100))
+        '''
+        section11.add_test_case(Condition_Check("Sampling Counter Test - S1 Packet, 200Hz", self.scripts.s1_sampling_counter_test, [0x00,0xC8], 200))
+        section11.add_test_case(Condition_Check("Sampling Counter Test - S1 Packet, 100Hz", self.scripts.s1_sampling_counter_test, [0x00,0x01], 100))
+
+        section12 = Test_Section("Longterm Packet Test")
+        self.test_sections.append(section11)
+        section12.add_test_case(Code("Longterm packet read test", self.scripts.read_packets_S0))
+        section12.add_test_case(Code("Longterm packet read test", self.scripts.read_packets_S1))
         '''
 
     def run_tests(self):
