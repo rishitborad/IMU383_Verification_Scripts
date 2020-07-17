@@ -155,7 +155,8 @@ class UART_Dev:
         retry = 0
         self._send_message([0x53,0x46,0x05,0x01,0x00,0x01,0x00,0x00])
         response = self.read_response()
-        #print "silence dev resp:", response
+        while response:
+            response = self.read_response();
         time.sleep(2)
         # Retrive any unread bytes in buffer
         nbytes = self.UUT.inWaiting()
